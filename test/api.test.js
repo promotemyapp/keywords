@@ -46,10 +46,6 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Full response for AI agents/);
   assert.match(page, /keyword-bubble/);
   assert.match(page, /keyword-text/);
-  assert.match(page, /score-indicator/);
-  assert.match(page, /score-fill/);
-  assert.match(page, /medium-high/);
-  assert.match(page, /scoreLabel\.textContent = String\(score\)/);
   assert.match(page, /performance\.now/);
   assert.match(page, /parsed\.topic = topic/);
   assert.doesNotMatch(page, /rodiny plánující nový dům/);
@@ -63,9 +59,10 @@ test("recommended mode returns compact keyword recommendations", async () => {
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.topic, "analytics software");
-  assert.match(result.primary_keyword.keyword, /analytics software/);
+  assert.match(result.primary_keyword, /analytics software/);
   assert.ok(result.supporting_keywords.length > 0);
-  assert.ok(result.supporting_keywords.every(({ keyword, score }) => keyword && typeof score === "number"));
+  assert.ok(result.supporting_keywords.every((keyword) => typeof keyword === "string" && keyword.length > 0));
+  assert.ok(result.supporting_keywords.length > 1);
   assert.deepEqual(Object.keys(result).sort(), ["primary_keyword", "supporting_keywords", "topic"]);
 });
 
@@ -85,7 +82,7 @@ test("empty provider results are reported as a warning", async () => {
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.supporting_keywords.length, 0);
-  assert.equal(result.primary_keyword.score, 0);
+  assert.equal(result.primary_keyword, "building family houses");
 });
 
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
@@ -94,8 +91,8 @@ test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.primary_keyword.keyword, "rodinné domy na prodej");
-  assert.match(result.primary_keyword.keyword, /é/);
+  assert.equal(result.primary_keyword, "rodinné domy na prodej");
+  assert.match(result.primary_keyword, /é/);
   assert.ok(requestedUrls.filter((url) => url.hostname === "suggestqueries.google.com").every((url) => url.searchParams.get("oe") === "utf-8"));
 });
 
@@ -136,7 +133,7 @@ test("guided sessions work across handler instances", async () => {
     result = await response.json();
   }
   assert.equal(result.complete, true);
-  assert.ok(result.primary_keyword.keyword);
+  assert.ok(result.primary_keyword);
 });
 
 test("guided sessions require a signing secret", async () => {

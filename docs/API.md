@@ -33,7 +33,7 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","configuration":{"country":"Czech Republic","language":"Czech"}}'
 ```
 
-`topic` is required. The response contains only `topic`, `primary_keyword`, and `supporting_keywords`. Each keyword recommendation contains its phrase and heuristic score. The provider details, exploratory seeds, trends signals, methodology, and other internal research data are intentionally not returned.
+`topic` is required. The response contains only `topic`, one `primary_keyword` string, and an ordered `supporting_keywords` string array. Supporting keywords are sorted from strongest to weakest using an internal heuristic score; that score is intentionally not returned. Provider details, exploratory seeds, trends signals, methodology, and other internal research data are not returned.
 
 The free providers are Google Autocomplete and Google Trends. Their signals are used internally to rank recommendations; they are not exposed in the compact response. The API does not claim CPC, difficulty, or ranking position.
 

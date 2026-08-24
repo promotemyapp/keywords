@@ -82,12 +82,14 @@ The compact response uses this shape:
 ```json
 {
   "topic": "Rodinné domy",
-  "primary_keyword": { "keyword": "rodinné domy", "score": 23 },
+  "primary_keyword": "rodinné domy",
   "supporting_keywords": [
-    { "keyword": "rodinné domy na prodej", "score": 19 }
+    "rodinné domy na prodej"
   ]
 }
 ```
+
+The score is used internally to rank the supporting keywords and is deliberately omitted from the API response. Supporting keywords are returned from strongest to weakest recommendation.
 
 ## API architecture
 

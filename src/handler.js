@@ -49,12 +49,10 @@ async function researchResponse(mode, overrides, input, fetchImpl, now) {
   const research = await researchKeywords({ topic: input.topic, audience: input.audience, configuration, fetchImpl, now });
   return {
     topic: research.topic,
-    primary_keyword: compactKeyword(research.primary_keyword),
-    supporting_keywords: research.supporting_keywords.map(compactKeyword)
+    primary_keyword: research.primary_keyword.keyword,
+    supporting_keywords: research.supporting_keywords.map(({ keyword }) => keyword)
   };
 }
-
-function compactKeyword({ keyword, score }) { return { keyword, score }; }
 
 function createSession(now, ttl) { return { version: 1, questionIndex: 0, configuration: loadKeywordResearchConfig().defaults, topic: null, audience: null, expiresAt: now() + ttl }; }
 function answerSession(session, value) {
