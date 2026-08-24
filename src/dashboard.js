@@ -138,8 +138,8 @@ export function renderDashboardPage() {
           const result = await response.json();
           const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
-          emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Research complete"; summary.replaceChildren();
-          addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length)); addSummary("Response time", formatDuration(responseTimeMs));
+          emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Success · " + formatDuration(responseTimeMs) + " · " + result.mode + " mode"; summary.replaceChildren();
+          addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length));
           renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2); brief.textContent = result.brief.markdown; guidance.textContent = result.guidance.markdown;
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
         finally { submitButton.disabled = false; }
