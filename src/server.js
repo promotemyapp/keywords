@@ -1,5 +1,4 @@
 import { createServer as createHttpServer } from "node:http";
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { createApiHandler } from "./handler.js";
@@ -15,7 +14,6 @@ export function createApiServer(options = {}) {
 
   return createHttpServer(async (request, response) => {
     try {
-      if (serveStaticAsset(request, response)) return;
       const webRequest = toWebRequest(request);
       const webResponse = await handler(webRequest);
       response.statusCode = webResponse.status;
@@ -27,22 +25,6 @@ export function createApiServer(options = {}) {
       response.end(JSON.stringify({ error: error.message || "Unexpected server error." }));
     }
   });
-}
-
-function serveStaticAsset(request, response) {
-  if (!["GET", "HEAD"].includes(request.method)) return false;
-
-  const pathname = new URL(request.url, "http://127.0.0.1").pathname;
-  const match = pathname.match(/^\/assets\/authors\/([a-z-]+\.png)$/);
-  if (!match) return false;
-
-  const assetPath = fileURLToPath(new URL(`../assets/authors/${match[1]}`, import.meta.url));
-  const body = readFileSync(assetPath);
-  response.statusCode = 200;
-  response.setHeader("Content-Type", "image/png");
-  response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  response.end(request.method === "HEAD" ? undefined : body);
-  return true;
 }
 
 export async function startApiServer({
@@ -105,10 +87,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   startApiServer({ port, host, allowFallback: !hasExplicitPort })
     .then(({ port: activePort }) => {
-      console.log(`Post template API listening on http://${host}:${activePort}`);
+      console.log(`Keyword research API listening on http://${host}:${activePort}`);
     })
     .catch((error) => {
-      console.error(`Unable to start Post template API: ${error.message}`);
+      console.error(`Unable to start keyword research API: ${error.message}`);
       process.exitCode = 1;
     });
 }

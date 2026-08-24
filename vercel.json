@@ -5,7 +5,7 @@
   "installCommand": "bun install",
   "functions": {
     "api/**/*.js": {
-      "includeFiles": "personas/**/*.md"
+      "includeFiles": "config/**/*.json"
     }
   },
   "rewrites": [

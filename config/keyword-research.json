@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "description": "Defaults and guardrails for product-marketing keyword research.",
+  "defaults": {
+    "language": "Czech",
+    "country": "Czech Republic",
+    "search_intent": "informational",
+    "supporting_query_limit": 8,
+    "serp_result_limit": 10,
+    "suggestion_seed_limit": 8,
+    "trends_enabled": true,
+    "trends_timeframe": "today 12-m",
+    "trends_keyword_limit": 5
+  },
+  "workflow": [
+    "Define the product, audience, market, and reader problem.",
+    "Collect seed language from customers, support, sales, and product documentation.",
+    "Expand candidates with related questions, modifiers, and competitor terminology.",
+    "Classify intent and compare free Google Trends interest for each promising candidate.",
+    "Select one primary query and a small set of supporting queries with distinct content jobs.",
+    "Record evidence, content gaps, difficulty assumptions, and a recommended content angle."
+  ]
+}
