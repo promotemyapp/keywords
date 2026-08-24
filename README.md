@@ -67,7 +67,6 @@ base score =
   + audience-word matches × 2
   + number of research seeds containing the keyword × 3
   + 4 when the keyword matches the selected search intent
-  + 6 when the keyword exactly matches the supplied topic
   + specificity bonus from 0 to 3 for additional meaningful words
   + content-angle usefulness bonus from 0 to 4
   + 1 when the keyword is a question
@@ -75,7 +74,7 @@ base score =
 
 When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
 
-The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`. Exploratory seeds and provider evidence remain internal and are not returned to the calling agent.
+The primary keyword is the highest-ranked validated provider candidate, so a better researched phrase can replace the supplied topic. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`. Exploratory seeds and provider evidence remain internal and are not returned to the calling agent.
 
 The compact response uses this shape:
 

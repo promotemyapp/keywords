@@ -37,6 +37,8 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
 
 The free providers are Google Autocomplete and Google Trends. Their signals are used internally to rank recommendations; they are not exposed in the compact response. The API does not claim CPC, difficulty, or ranking position.
 
+The primary keyword is the highest-ranked validated candidate. The supplied topic is used as the fallback only when no provider candidate is available.
+
 The browser dashboard may request an internal dashboard view to visualize scores, but those internal fields are not part of the normal agent-facing response.
 
 ## Specific request

@@ -84,6 +84,22 @@ test("recommended mode applies language and country overrides", async () => {
   assert.ok(requestedUrls.some((url) => url.hostname === "suggestqueries.google.com" && url.searchParams.get("hl") === "en" && url.searchParams.get("gl") === "us"));
 });
 
+test("primary keyword can be replaced by a stronger validated candidate", async () => {
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const query = new URL(url).searchParams.get("q");
+      return [query, query === "Rodinné domy" ? ["rodinné domy", "rodinné domy cena"] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.primary_keyword.keyword, "rodinné domy cena");
+});
+
 test("dashboard view keeps internal scores separate from the agent response", async () => {
   const handler = createApiHandler({ fetchImpl: suggestionFetch });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended?view=dashboard", { method: "POST", body: JSON.stringify({ topic: "analytics software" }) }));
