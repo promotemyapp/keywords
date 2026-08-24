@@ -1,6 +1,6 @@
 # Marketing Keyword Research API
 
-This service researches keywords for marketing blog posts. An AI agent or another client sends a topic and optional language/country configuration. The API discovers related search language, adds free Google Trends signals, ranks the candidates, and returns a structured content brief.
+This service researches keywords for marketing blog posts. An AI agent or another client sends a topic and optional language/country configuration. The API discovers related search language, adds free Google Trends signals internally, ranks the candidates, and returns a compact list of keyword recommendations.
 
 Blog-post templates, authors, personas, portraits, post profiles, and publishing workflows belong to the separate reference project and are intentionally out of scope here.
 
@@ -21,7 +21,7 @@ Blog-post templates, authors, personas, portraits, post profiles, and publishing
 4. Groups candidates into content-angle clusters such as costs, process, permits, plans, materials, financing, mistakes, energy, and maintenance.
 5. Ranks validated candidates for topic relevance, audience relevance, seed coverage, and intent match, then selects supporting keywords from different clusters to avoid repetitive variants.
 6. Adds Google Trends relative-interest and direction signals when available.
-7. Returns a primary keyword, diverse validated supporting keywords with content roles, exploratory content angles, methodology, limitations, sources, and a YAML brief for a blog-writing agent.
+7. Returns only a primary keyword and diverse supporting keyword recommendations to the calling agent.
 
 The pipeline is free and unauthenticated. It does not use Google Ads, paid keyword tools, or Search Console. Google Autocomplete and Google Trends provide useful directional signals, but they do not provide exact monthly search volume, CPC, paid competition, organic difficulty, or guaranteed ranking potential.
 
@@ -75,22 +75,18 @@ base score =
 
 When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
 
-The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no suggestion for a content angle, the API returns that angle separately in `content_angles` with `validated: false`; it is an exploratory prompt, not a keyword and is not included in the score ranking. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`.
+The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`. Exploratory seeds and provider evidence remain internal and are not returned to the calling agent.
 
-The output brief uses this shape:
+The compact response uses this shape:
 
-```yaml
-keyword_research:
-  topic: "{{TOPIC}}"
-  audience: "{{TARGET_AUDIENCE}}"
-  primary_query: "{{PRIMARY_QUERY}}"
-  supporting_queries: []
-  search_intent: "informational"
-  language: "Czech"
-  country: "Czech Republic"
-  trends_signal: "{{RELATIVE_INTEREST_AND_DIRECTION}}"
-  serp_observations: "{{CURRENT_RESULT_PATTERNS_AND_CONTENT_GAP}}"
-  recommended_content_angle: "{{UNIQUE_CONTENT_ANGLE}}"
+```json
+{
+  "topic": "Rodinné domy",
+  "primary_keyword": { "keyword": "rodinné domy", "score": 23 },
+  "supporting_keywords": [
+    { "keyword": "rodinné domy na prodej", "score": 19 }
+  ]
+}
 ```
 
 ## API architecture
@@ -98,7 +94,7 @@ keyword_research:
 ```mermaid
 flowchart LR
   Client[Marketing project] --> Handler[Shared Request → Response handler]
-  Handler --> Direct[Direct keyword brief]
+  Handler --> Direct[Compact keyword recommendations]
   Handler --> Guided[Signed guided session]
   Handler --> Config[Keyword research configuration]
   Local[Bun server] --> Handler
@@ -107,7 +103,7 @@ flowchart LR
 
 The API keeps the portable local/Vercel setup from the reference repository: a shared Request → Response handler, CORS handling, health route, discovery response, browser dashboard, body-size limit, validation, and stateless HMAC-signed guided sessions. See [`docs/API.md`](docs/API.md) for the complete API reference.
 
-The root URL serves a browser dashboard. It shows the human-readable primary and supporting keyword bubbles first, followed by the full agent-ready JSON response, YAML brief, and research guidance.
+The root URL serves a browser dashboard. It shows the human-readable primary and supporting keyword bubbles first, followed by the compact agent-ready JSON response.
 
 ## Main endpoints
 
@@ -130,7 +126,7 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","configuration":{"language":"Czech","country":"Czech Republic"}}'
 ```
 
-The response contains `research.primary_keyword`, ranked `research.supporting_keywords`, `research.all_candidates`, Trends signals, source URLs, limitations, and `brief.markdown`.
+The response contains `topic`, `primary_keyword`, and ranked `supporting_keywords`. Provider details, internal research traces, and methodology are kept inside the API.
 
 ### Configure language and country
 

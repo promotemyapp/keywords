@@ -1,6 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ConfigurationError, loadKeywordResearchConfig, resolveKeywordResearchConfig, validateKeywordResearchConfig } from "./config.js";
-import { loadKeywordResearchGuidance } from "./guidance.js";
 import { ResearchError, researchKeywords } from "./research.js";
 import { renderDashboardPage } from "./dashboard.js";
 
@@ -49,16 +48,13 @@ async function researchResponse(mode, overrides, input, fetchImpl, now) {
   const configuration = resolveKeywordResearchConfig(overrides);
   const research = await researchKeywords({ topic: input.topic, audience: input.audience, configuration, fetchImpl, now });
   return {
-    packageVersion: "1.0", mode, delivery: mode === "guided" ? "guided" : "direct", configuration, guidance: loadKeywordResearchGuidance(),
-    research,
-    brief: { format: "yaml", markdown: [
-      "keyword_research:", `  topic: ${JSON.stringify(research.topic)}`, `  audience: ${JSON.stringify(research.audience ?? "")}`,
-      `  primary_query: ${JSON.stringify(research.primary_keyword.keyword)}`, "  supporting_queries:", ...research.supporting_keywords.map(({ keyword }) => `    - ${JSON.stringify(keyword)}`), `  search_intent: ${JSON.stringify(configuration.search_intent)}`,
-      `  language: ${JSON.stringify(configuration.language)}`, `  country: ${JSON.stringify(configuration.country)}`,
-      `  trends_signal: ${JSON.stringify(research.trends.signals.find(({ keyword }) => keyword === research.primary_keyword.keyword) ?? "unavailable")}`, `  research_methodology: ${JSON.stringify(research.methodology)}`, `  recommended_content_angle: ${JSON.stringify(`Use ${research.primary_keyword.keyword} as the central article angle and map supporting queries to distinct sections.`)}`
-    ].join("\n") }
+    topic: research.topic,
+    primary_keyword: compactKeyword(research.primary_keyword),
+    supporting_keywords: research.supporting_keywords.map(compactKeyword)
   };
 }
+
+function compactKeyword({ keyword, score }) { return { keyword, score }; }
 
 function createSession(now, ttl) { return { version: 1, questionIndex: 0, configuration: loadKeywordResearchConfig().defaults, topic: null, audience: null, expiresAt: now() + ttl }; }
 function answerSession(session, value) {

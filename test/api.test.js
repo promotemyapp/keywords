@@ -43,18 +43,13 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Topic to research/);
   assert.match(page, /supporting-card/);
   assert.match(page, /supporting-keywords/);
-  assert.match(page, /content-angle-card/);
-  assert.match(page, /Exploratory content angles/);
   assert.match(page, /Full response for AI agents/);
-  assert.match(page, /Generated keyword brief \(YAML\)/);
   assert.match(page, /keyword-bubble/);
   assert.match(page, /keyword-text/);
   assert.match(page, /score-indicator/);
   assert.match(page, /score-fill/);
   assert.match(page, /medium-high/);
   assert.match(page, /scoreLabel\.textContent = String\(score\)/);
-  assert.match(page, /Completed with warnings/);
-  assert.match(page, /mode/);
   assert.match(page, /performance\.now/);
   assert.match(page, /parsed\.topic = topic/);
   assert.doesNotMatch(page, /rodiny plánující nový dům/);
@@ -62,20 +57,16 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Search intent is optional/);
 });
 
-test("recommended mode returns a keyword brief", async () => {
+test("recommended mode returns compact keyword recommendations", async () => {
   const handler = createApiHandler({ fetchImpl: suggestionFetch });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "analytics software", audience: "small businesses" }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.mode, "recommended");
-  assert.equal(result.configuration.language, "Czech");
-  assert.equal(result.configuration.country, "Czech Republic");
-  assert.equal(result.research.trends.status, "available");
-  assert.match(result.brief.markdown, /analytics software/);
-  assert.match(result.guidance.markdown, /Keyword research workflow/);
-  assert.ok(new Set(result.research.all_candidates.map(({ score }) => score)).size > 1);
-  assert.ok(new Set(result.research.supporting_keywords.map(({ cluster }) => cluster)).size > 1);
-  assert.ok(result.research.supporting_keywords.every(({ content_role }) => content_role));
+  assert.equal(result.topic, "analytics software");
+  assert.match(result.primary_keyword.keyword, /analytics software/);
+  assert.ok(result.supporting_keywords.length > 0);
+  assert.ok(result.supporting_keywords.every(({ keyword, score }) => keyword && typeof score === "number"));
+  assert.deepEqual(Object.keys(result).sort(), ["primary_keyword", "supporting_keywords", "topic"]);
 });
 
 test("recommended mode applies language and country overrides", async () => {
@@ -84,8 +75,7 @@ test("recommended mode applies language and country overrides", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses", configuration: { language: "English", country: "United States" } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.configuration.language, "English");
-  assert.equal(result.configuration.country, "United States");
+  assert.equal(result.topic, "building family houses");
   assert.ok(requestedUrls.some((url) => url.hostname === "suggestqueries.google.com" && url.searchParams.get("hl") === "en" && url.searchParams.get("gl") === "us"));
 });
 
@@ -94,30 +84,8 @@ test("empty provider results are reported as a warning", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.research.supporting_keywords.length, 0);
-  assert.equal(result.research.primary_keyword.score, 0);
-  assert.match(result.research.warnings.join(" "), /exploratory content angle/);
-  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
-});
-
-test("Czech exploratory angles use grammatical phrases without becoming fake keywords", async () => {
-  const handler = createApiHandler({ fetchImpl: async () => ({ ok: true, status: 200, async json() { return ["query", []]; }, async text() { return ""; } }) });
-  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
-  const result = await response.json();
-  const angles = result.research.content_angles.map(({ query }) => query);
-  assert.ok(angles.includes("chyby při stavbě rodinného domu"));
-  assert.equal(result.research.supporting_keywords.length, 0);
-  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
-});
-
-test("generic topics do not inherit construction-specific angle prompts", async () => {
-  const handler = createApiHandler({ fetchImpl: async () => ({ ok: true, status: 200, async json() { return ["query", []]; }, async text() { return ""; } }) });
-  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Pohádky pro děti", configuration: { language: "Czech", country: "Czech Republic" } }) }));
-  const result = await response.json();
-  const angles = result.research.content_angles.map(({ query }) => query).join(" ");
-  assert.match(angles, /Pohádky pro děti/i);
-  assert.doesNotMatch(angles, /stavb|stavební povolení|materiály pro/i);
-  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
+  assert.equal(result.supporting_keywords.length, 0);
+  assert.equal(result.primary_keyword.score, 0);
 });
 
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
@@ -126,8 +94,8 @@ test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.research.primary_keyword.keyword, "rodinné domy na prodej");
-  assert.match(result.research.primary_keyword.keyword, /é/);
+  assert.equal(result.primary_keyword.keyword, "rodinné domy na prodej");
+  assert.match(result.primary_keyword.keyword, /é/);
   assert.ok(requestedUrls.filter((url) => url.hostname === "suggestqueries.google.com").every((url) => url.searchParams.get("oe") === "utf-8"));
 });
 
@@ -136,10 +104,7 @@ test("specific mode validates and applies overrides", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/specific", { method: "POST", body: JSON.stringify({ topic: "inventory software", configuration: { language: "German", country: "Germany", supporting_query_limit: 6 } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.configuration.country, "Germany");
-  assert.equal(result.configuration.language, "German");
-  assert.equal(result.research.market.country, "Germany");
-  assert.equal(result.configuration.supporting_query_limit, 6);
+  assert.equal(result.topic, "inventory software");
 });
 
 test("invalid configuration is rejected", async () => {
@@ -171,9 +136,7 @@ test("guided sessions work across handler instances", async () => {
     result = await response.json();
   }
   assert.equal(result.complete, true);
-  assert.equal(result.mode, "guided");
-  assert.equal(result.configuration.search_intent, "commercial");
-  assert.ok(result.research.primary_keyword.keyword);
+  assert.ok(result.primary_keyword.keyword);
 });
 
 test("guided sessions require a signing secret", async () => {

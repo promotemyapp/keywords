@@ -1,6 +1,6 @@
 # Keyword Research API
 
-The API accepts a topic, discovers related search language from Google autocomplete, adds free Google Trends interest signals, ranks candidates for blog usefulness, and returns a structured keyword brief. Search Console is intentionally not part of this project. The API preserves the shared Request→Response handler, local Bun server, Vercel Function entrypoints, CORS behavior, validation, body limits, and signed guided sessions from the reference project.
+The API accepts a topic, discovers related search language from Google autocomplete, adds free Google Trends interest signals, ranks candidates for blog usefulness, and returns only the compact keyword recommendations needed by the calling agent. Search Console is intentionally not part of this project. Internal provider details and methodology stay inside the service. The API preserves the shared Request→Response handler, local Bun server, Vercel Function entrypoints, CORS behavior, validation, body limits, and signed guided sessions from the reference project.
 
 ## Run locally
 
@@ -10,7 +10,7 @@ bun run start
 
 The API listens on `http://127.0.0.1:3000` by default. Set `PORT` or `HOST` when needed. If the default port is busy, the local server tries the next ten ports. Guided sessions require `SESSION_SECRET` with at least 32 characters.
 
-Open the root URL with a browser to use the dashboard. After a request completes, it shows a human-readable primary keyword and supporting-keyword bubbles first, followed by expandable full JSON, YAML brief, and research-guidance sections for AI agents and programmatic inspection.
+Open the root URL with a browser to use the dashboard. After a request completes, it shows a human-readable primary keyword and supporting-keyword bubbles first, followed by the compact JSON response for AI agents and programmatic inspection.
 
 ## Endpoints
 
@@ -21,7 +21,7 @@ Open the root URL with a browser to use the dashboard. After a request completes
 | GET | `/v1/config` | Research defaults and guardrails. |
 | POST | `/v1/keywords/recommended` | Research a topic and return ranked blog keywords. |
 | POST | `/v1/keywords/research` | Alias for the recommended research route. |
-| POST | `/v1/keywords/specific` | Return a brief with configuration overrides. |
+| POST | `/v1/keywords/specific` | Return compact recommendations with configuration overrides. |
 | POST | `/v1/sessions` | Start guided research setup. |
 | POST | `/v1/sessions/answers` | Answer the next guided question. |
 
@@ -33,9 +33,9 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","configuration":{"country":"Czech Republic","language":"Czech"}}'
 ```
 
-`topic` is required. The response includes `research.primary_keyword`, diverse validated `research.supporting_keywords` selected from different content clusters, exploratory `research.content_angles` with validation state, each keyword with a `cluster` and `content_role`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
+`topic` is required. The response contains only `topic`, `primary_keyword`, and `supporting_keywords`. Each keyword recommendation contains its phrase and heuristic score. The provider details, exploratory seeds, trends signals, methodology, and other internal research data are intentionally not returned.
 
-The free providers are Google Autocomplete and Google Trends. When Autocomplete has no result for a localized content angle, the API returns the angle separately as an unvalidated exploratory prompt; it does not present it as a researched keyword. Trends returns normalized relative interest and direction, not exact monthly volume. The response does not claim CPC, difficulty, or ranking position.
+The free providers are Google Autocomplete and Google Trends. Their signals are used internally to rank recommendations; they are not exposed in the compact response. The API does not claim CPC, difficulty, or ranking position.
 
 ## Specific request
 

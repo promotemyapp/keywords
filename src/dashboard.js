@@ -100,8 +100,6 @@ export function renderDashboardPage() {
             <div class="summary" id="summary"></div>
             <div id="human-output"></div>
             <details open><summary>Full response for AI agents and programmatic clients</summary><pre id="raw-response"></pre></details>
-            <details><summary>Generated keyword brief (YAML)</summary><pre id="brief"></pre></details>
-            <details><summary>Research guidance and methodology</summary><pre id="guidance"></pre></details>
           </div>
         </section>
       </div>
@@ -117,8 +115,6 @@ export function renderDashboardPage() {
       const summary = document.getElementById("summary");
       const humanOutput = document.getElementById("human-output");
       const rawResponse = document.getElementById("raw-response");
-      const brief = document.getElementById("brief");
-      const guidance = document.getElementById("guidance");
 
       function addSummary(label, value) {
         const card = document.createElement("div"); card.className = "summary-card";
@@ -140,7 +136,7 @@ export function renderDashboardPage() {
       }
 
       function renderHumanOutput(result) {
-        const research = result.research;
+        const research = result;
         humanOutput.replaceChildren();
         const primary = document.createElement("div"); primary.className = "primary";
         const heading = document.createElement("h3"); heading.textContent = "Primary keyword";
@@ -154,17 +150,7 @@ export function renderDashboardPage() {
         const supportingKeywords = document.createElement("div"); supportingKeywords.className = "supporting-keywords";
         research.supporting_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); supportingKeywords.append(keywordRow); });
         supportingCard.append(supportingTitle, supportingExplanation, supportingKeywords);
-        const angleCard = document.createElement("div"); angleCard.className = "content-angle-card";
-        const angleTitle = document.createElement("h3"); angleTitle.textContent = "Exploratory content angles";
-        const angleExplanation = document.createElement("p"); angleExplanation.className = "muted"; angleExplanation.textContent = "These are research prompts generated for coverage. Only validated Google Autocomplete results are shown as keywords above.";
-        const angleList = document.createElement("div"); angleList.className = "content-angle-list";
-        (result.research.content_angles || []).forEach((angle) => { const row = document.createElement("div"); row.className = "content-angle"; const query = document.createElement("span"); query.textContent = angle.query; const state = document.createElement("small"); state.textContent = angle.validated ? "validated angle" : "exploratory only"; row.append(query, state); angleList.append(row); });
-        angleCard.append(angleTitle, angleExplanation, angleList);
-        const metadata = document.createElement("div"); metadata.className = "meta";
-        [research.topic, research.audience && "Audience: " + research.audience, "Providers: " + (research.providers?.join(", ") || research.provider), "Researched: " + research.researched_at].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; metadata.append(tag); });
-        const warning = document.createElement("p"); warning.className = "muted"; warning.textContent = research.warnings?.join(" ") || "";
-        const limitation = document.createElement("p"); limitation.className = "muted"; limitation.textContent = research.limitations?.[0] || "";
-        humanOutput.append(primary, supportingHeading, supportingCard, angleCard, metadata, warning, limitation);
+        humanOutput.append(primary, supportingHeading, supportingCard);
       }
 
       form.addEventListener("submit", async (event) => {
@@ -179,9 +165,9 @@ export function renderDashboardPage() {
           const result = await response.json();
           const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
-          emptyState.hidden = true; responseContent.hidden = false; status.textContent = (result.research.warnings?.length ? "Completed with warnings" : "Success") + " · " + formatDuration(responseTimeMs) + " · " + result.mode + " mode"; summary.replaceChildren();
-          addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length));
-          renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2); brief.textContent = result.brief.markdown; guidance.textContent = result.guidance.markdown;
+          emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Success · " + formatDuration(responseTimeMs); summary.replaceChildren();
+          addSummary("Topic", result.topic); addSummary("Recommendations", String(1 + result.supporting_keywords.length));
+          renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2);
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
         finally { submitButton.disabled = false; }
       });
