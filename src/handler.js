@@ -49,11 +49,20 @@ async function researchResponse(mode, overrides, input, fetchImpl, now, includeI
   const research = await researchKeywords({ topic: input.topic, audience: input.audience, configuration, fetchImpl, now });
   const response = {
     topic: research.topic,
-    primary_keyword: research.primary_keyword.keyword,
-    supporting_keywords: research.supporting_keywords.map(({ keyword }) => keyword)
+    primary_keyword: compactKeyword(research.primary_keyword),
+    supporting_keywords: research.supporting_keywords.map(compactKeyword)
   };
   if (includeInternal) response.dashboard_research = research;
   return response;
+}
+
+function compactKeyword({ keyword, score }) { return { keyword, score_label: scoreLabel(score) }; }
+function scoreLabel(score) {
+  if (score <= 0) return "no evidence";
+  if (score <= 10) return "weak";
+  if (score <= 20) return "okay";
+  if (score <= 30) return "good";
+  return "strong";
 }
 
 function createSession(now, ttl) { return { version: 1, questionIndex: 0, configuration: loadKeywordResearchConfig().defaults, topic: null, audience: null, expiresAt: now() + ttl }; }

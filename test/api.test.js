@@ -62,9 +62,10 @@ test("recommended mode returns compact keyword recommendations", async () => {
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.topic, "analytics software");
-  assert.match(result.primary_keyword, /analytics software/);
+  assert.match(result.primary_keyword.keyword, /analytics software/);
   assert.ok(result.supporting_keywords.length > 0);
-  assert.ok(result.supporting_keywords.every((keyword) => typeof keyword === "string" && keyword.length > 0));
+  assert.ok(["no evidence", "weak", "okay", "good", "strong"].includes(result.primary_keyword.score_label));
+  assert.ok(result.supporting_keywords.every(({ keyword, score_label }) => keyword && ["no evidence", "weak", "okay", "good", "strong"].includes(score_label)));
   assert.ok(result.supporting_keywords.length > 1);
   assert.deepEqual(Object.keys(result).sort(), ["primary_keyword", "supporting_keywords", "topic"]);
 });
@@ -85,8 +86,8 @@ test("dashboard view keeps internal scores separate from the agent response", as
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.ok(result.dashboard_research.primary_keyword.score >= 0);
-  assert.equal(typeof result.primary_keyword, "string");
-  assert.ok(result.supporting_keywords.every((keyword) => typeof keyword === "string"));
+  assert.equal(typeof result.primary_keyword.keyword, "string");
+  assert.ok(result.supporting_keywords.every(({ keyword, score_label }) => typeof keyword === "string" && typeof score_label === "string"));
 });
 
 test("empty provider results are reported as a warning", async () => {
@@ -95,7 +96,7 @@ test("empty provider results are reported as a warning", async () => {
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.supporting_keywords.length, 0);
-  assert.equal(result.primary_keyword, "building family houses");
+  assert.equal(result.primary_keyword.keyword, "building family houses");
 });
 
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
@@ -104,8 +105,8 @@ test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.primary_keyword, "rodinné domy na prodej");
-  assert.match(result.primary_keyword, /é/);
+  assert.equal(result.primary_keyword.keyword, "rodinné domy na prodej");
+  assert.match(result.primary_keyword.keyword, /é/);
   assert.ok(requestedUrls.filter((url) => url.hostname === "suggestqueries.google.com").every((url) => url.searchParams.get("oe") === "utf-8"));
 });
 
@@ -146,7 +147,7 @@ test("guided sessions work across handler instances", async () => {
     result = await response.json();
   }
   assert.equal(result.complete, true);
-  assert.ok(result.primary_keyword);
+  assert.ok(result.primary_keyword.keyword);
 });
 
 test("guided sessions require a signing secret", async () => {

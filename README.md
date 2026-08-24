@@ -82,14 +82,16 @@ The compact response uses this shape:
 ```json
 {
   "topic": "Rodinné domy",
-  "primary_keyword": "rodinné domy",
+  "primary_keyword": { "keyword": "rodinné domy", "score_label": "good" },
   "supporting_keywords": [
-    "rodinné domy na prodej"
+    { "keyword": "rodinné domy na prodej", "score_label": "okay" }
   ]
 }
 ```
 
-The score is used internally to rank the supporting keywords and is deliberately omitted from the agent-facing API response. Supporting keywords are returned from strongest to weakest recommendation. The browser dashboard uses a separate internal view so it can still display the score and progress bar for human inspection.
+The numeric score is used internally to rank the supporting keywords and is converted to a qualitative `score_label` in the agent-facing response. Supporting keywords are returned from strongest to weakest recommendation. The browser dashboard uses a separate internal view so it can still display the numeric score and progress bar for human inspection.
+
+Score labels use these ranges: `no evidence` = 0, `weak` = 1–10, `okay` = 11–20, `good` = 21–30, and `strong` = 31 or higher.
 
 ## API architecture
 
