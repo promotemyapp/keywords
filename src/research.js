@@ -35,6 +35,30 @@ const CONTENT_ANGLE_SEEDS = {
     { cluster: "maintenance", role: "maintenance", build: (topic) => `maintenance of ${topic}` }
   ]
 };
+const GENERIC_ANGLE_SEEDS = {
+  czech: [
+    { cluster: "costs", role: "costs and value", build: (topic) => `${topic} cena a náklady` },
+    { cluster: "process", role: "how it works", build: (topic) => `jak funguje ${topic}` },
+    { cluster: "permits", role: "rules and requirements", build: (topic) => `${topic} pravidla a požadavky` },
+    { cluster: "plans", role: "examples and formats", build: (topic) => `${topic} vzor a příklady` },
+    { cluster: "materials", role: "types and options", build: (topic) => `druhy a možnosti: ${topic}` },
+    { cluster: "financing", role: "purchase and availability", build: (topic) => `${topic} kde koupit` },
+    { cluster: "mistakes", role: "common mistakes", build: (topic) => `časté chyby u tématu ${topic}` },
+    { cluster: "energy", role: "benefits and drawbacks", build: (topic) => `výhody a nevýhody: ${topic}` },
+    { cluster: "maintenance", role: "tips and practice", build: (topic) => `tipy pro ${topic}` }
+  ],
+  english: [
+    { cluster: "costs", role: "costs and value", build: (topic) => `${topic} cost and pricing` },
+    { cluster: "process", role: "how it works", build: (topic) => `how ${topic} works` },
+    { cluster: "permits", role: "rules and requirements", build: (topic) => `${topic} rules and requirements` },
+    { cluster: "plans", role: "examples and formats", build: (topic) => `${topic} examples and templates` },
+    { cluster: "materials", role: "types and options", build: (topic) => `${topic} types and options` },
+    { cluster: "financing", role: "purchase and availability", build: (topic) => `where to buy ${topic}` },
+    { cluster: "mistakes", role: "common mistakes", build: (topic) => `common ${topic} mistakes` },
+    { cluster: "energy", role: "benefits and drawbacks", build: (topic) => `${topic} benefits and drawbacks` },
+    { cluster: "maintenance", role: "tips and practice", build: (topic) => `${topic} tips and best practices` }
+  ]
+};
 
 export class ResearchError extends Error {
   constructor(message, status = 502) { super(message); this.name = "ResearchError"; this.status = status; }
@@ -86,7 +110,10 @@ function buildSeeds(topic, audience, configuration) {
   const language = languageName(configuration.language);
   const seedBase = base.toLocaleLowerCase(languageCode(configuration.language));
   const forms = language === "czech" ? czechTopicForms(seedBase) : { genitive: seedBase, singular: seedBase };
-  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: build(seedBase, forms), cluster, role }));
+  const angleLibrary = language === "czech" && seedBase === "rodinné domy"
+    ? CONTENT_ANGLE_SEEDS.czech
+    : GENERIC_ANGLE_SEEDS[language] ?? GENERIC_ANGLE_SEEDS.english;
+  const angleSeeds = angleLibrary.map(({ cluster, role, build }) => ({ query: build(seedBase, forms), cluster, role }));
   return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 

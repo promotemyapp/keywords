@@ -57,6 +57,7 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /mode/);
   assert.match(page, /performance\.now/);
   assert.match(page, /parsed\.topic = topic/);
+  assert.doesNotMatch(page, /rodiny plánující nový dům/);
 });
 
 test("recommended mode returns a keyword brief", async () => {
@@ -104,6 +105,16 @@ test("Czech exploratory angles use grammatical phrases without becoming fake key
   const angles = result.research.content_angles.map(({ query }) => query);
   assert.ok(angles.includes("chyby při stavbě rodinného domu"));
   assert.equal(result.research.supporting_keywords.length, 0);
+  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
+});
+
+test("generic topics do not inherit construction-specific angle prompts", async () => {
+  const handler = createApiHandler({ fetchImpl: async () => ({ ok: true, status: 200, async json() { return ["query", []]; }, async text() { return ""; } }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Pohádky pro děti", configuration: { language: "Czech", country: "Czech Republic" } }) }));
+  const result = await response.json();
+  const angles = result.research.content_angles.map(({ query }) => query).join(" ");
+  assert.match(angles, /Pohádky pro děti/i);
+  assert.doesNotMatch(angles, /stavb|stavební povolení|materiály pro/i);
   assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
 });
 
