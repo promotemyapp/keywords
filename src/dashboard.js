@@ -50,7 +50,7 @@ export function renderDashboardPage() {
       .keyword-bubble .keyword-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
       .score-indicator { display: inline-flex; flex: 0 0 124px; align-items: center; gap: 7px; }
       .score-track { flex: 1; height: 7px; overflow: hidden; border-radius: 999px; background: #dce4f2; }
-      .score-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6d8df5, #2449bd); }
+      .score-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #43b581, #16834d); }
       .score-label { flex: 0 0 auto; color: #53627c; font-size: .68rem; font-weight: 800; white-space: nowrap; }
       .keyword-bubble[data-intent="commercial"] { color: #6a4213; border-color: #f0d39a; background: #fff8e9; }
       .keyword-bubble[data-intent="transactional"] { color: #145c45; border-color: #b4dfce; background: #effbf6; }
@@ -120,7 +120,7 @@ export function renderDashboardPage() {
         const keywordText = document.createElement("span"); keywordText.className = "keyword-text"; keywordText.textContent = item.keyword;
         const score = Number(item.score ?? 0); const scoreIndicator = document.createElement("span"); scoreIndicator.className = "score-indicator"; scoreIndicator.setAttribute("aria-label", "Score " + score + " out of 50");
         const scoreTrack = document.createElement("span"); scoreTrack.className = "score-track"; const scoreFill = document.createElement("span"); scoreFill.className = "score-fill"; scoreFill.style.width = Math.min(100, Math.max(0, score / 50 * 100)) + "%"; scoreTrack.append(scoreFill);
-        const scoreLabel = document.createElement("span"); scoreLabel.className = "score-label"; scoreLabel.textContent = score > 50 ? "50+ / 50" : score + " / 50"; scoreIndicator.append(scoreTrack, scoreLabel);
+        const scoreLabel = document.createElement("span"); scoreLabel.className = "score-label"; scoreLabel.textContent = String(score); scoreIndicator.append(scoreTrack, scoreLabel);
         bubble.append(scoreIndicator);
         bubble.prepend(keywordText);
         parent.append(bubble);
