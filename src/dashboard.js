@@ -40,10 +40,10 @@ export function renderDashboardPage() {
       .primary { margin-bottom: 24px; padding: 18px; border: 1px solid #bfcdf4; border-radius: 14px; background: linear-gradient(135deg, #f0f4ff, #fbfcff); }
       .primary .keyword-bubble { margin-top: 12px; font-size: 1.05rem; }
       .supporting-heading { margin-bottom: 12px; }
-      .supporting-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 24px; }
-      .supporting-card { min-width: 0; padding: 16px; border: 1px solid #dce4f2; border-radius: 14px; background: #fff; }
+      .supporting-card { min-width: 0; margin-bottom: 24px; padding: 18px; border: 1px solid #dce4f2; border-radius: 14px; background: #fff; }
       .supporting-card h3 { margin-bottom: 6px; }
-      .supporting-card .keyword-list { margin-bottom: 0; }
+      .supporting-keywords { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
+      .supporting-keywords .keyword-list { margin: 0; }
       .supporting-card .keyword-bubble { width: 100%; align-items: flex-start; border-radius: 12px; padding: 11px 12px; }
       .keyword-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 24px; }
       .keyword-bubble { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 12px; border: 1px solid #cbd7f3; border-radius: 999px; color: #213a86; background: #f1f4ff; font-weight: 700; }
@@ -129,19 +129,17 @@ export function renderDashboardPage() {
         const bubbleList = document.createElement("div"); bubbleList.className = "keyword-list"; addBubble(research.primary_keyword, bubbleList);
         primary.append(heading, explanation, bubbleList);
         const supportingHeading = document.createElement("h3"); supportingHeading.className = "supporting-heading"; supportingHeading.textContent = "Supporting keywords (" + research.supporting_keywords.length + ")";
-        const supportingCards = document.createElement("div"); supportingCards.className = "supporting-cards";
-        research.supporting_keywords.forEach((item) => {
-          const supportingCard = document.createElement("div"); supportingCard.className = "supporting-card";
-          const supportingTitle = document.createElement("h3"); supportingTitle.textContent = "Supporting keyword";
-          const supportingExplanation = document.createElement("p"); supportingExplanation.className = "muted"; supportingExplanation.textContent = "Use this query as a supporting section or content angle.";
-          const supporting = document.createElement("div"); supporting.className = "keyword-list"; addBubble(item, supporting);
-          supportingCard.append(supportingTitle, supportingExplanation, supporting); supportingCards.append(supportingCard);
-        });
+        const supportingCard = document.createElement("div"); supportingCard.className = "supporting-card";
+        const supportingTitle = document.createElement("h3"); supportingTitle.textContent = "Supporting keywords";
+        const supportingExplanation = document.createElement("p"); supportingExplanation.className = "muted"; supportingExplanation.textContent = "Use these related queries as supporting sections or separate content angles.";
+        const supportingKeywords = document.createElement("div"); supportingKeywords.className = "supporting-keywords";
+        research.supporting_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); supportingKeywords.append(keywordRow); });
+        supportingCard.append(supportingTitle, supportingExplanation, supportingKeywords);
         const metadata = document.createElement("div"); metadata.className = "meta";
         [research.topic, research.audience && "Audience: " + research.audience, "Providers: " + (research.providers?.join(", ") || research.provider), "Researched: " + research.researched_at].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; metadata.append(tag); });
         const warning = document.createElement("p"); warning.className = "muted"; warning.textContent = research.warnings?.join(" ") || "";
         const limitation = document.createElement("p"); limitation.className = "muted"; limitation.textContent = research.limitations?.[0] || "";
-        humanOutput.append(primary, supportingHeading, supportingCards, metadata, warning, limitation);
+        humanOutput.append(primary, supportingHeading, supportingCard, metadata, warning, limitation);
       }
 
       form.addEventListener("submit", async (event) => {
