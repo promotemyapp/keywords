@@ -50,7 +50,8 @@ async function researchResponse(mode, overrides, input, fetchImpl, now, includeI
   const response = {
     topic: research.topic,
     primary_keyword: compactKeyword(research.primary_keyword),
-    supporting_keywords: research.supporting_keywords.map(compactKeyword)
+    supporting_keywords: research.supporting_keywords.map(compactKeyword),
+    diversity_keywords: research.diversity_keywords.map(compactKeyword)
   };
   if (includeInternal) response.dashboard_research = research;
   return response;

@@ -66,8 +66,12 @@ test("recommended mode returns compact keyword recommendations", async () => {
   assert.ok(result.supporting_keywords.length > 0);
   assert.ok(["no evidence", "weak", "okay", "good", "strong"].includes(result.primary_keyword.score));
   assert.ok(result.supporting_keywords.every(({ keyword, score }) => keyword && ["no evidence", "weak", "okay", "good", "strong"].includes(score)));
+  assert.ok(result.diversity_keywords.length <= 3);
+  assert.ok(result.diversity_keywords.every(({ keyword, score }) => keyword && ["no evidence", "weak", "okay", "good", "strong"].includes(score)));
+  const returnedKeywords = [result.primary_keyword.keyword, ...result.supporting_keywords.map(({ keyword }) => keyword)];
+  assert.ok(result.diversity_keywords.every(({ keyword }) => !returnedKeywords.includes(keyword)));
   assert.ok(result.supporting_keywords.length > 1);
-  assert.deepEqual(Object.keys(result).sort(), ["primary_keyword", "supporting_keywords", "topic"]);
+  assert.deepEqual(Object.keys(result).sort(), ["diversity_keywords", "primary_keyword", "supporting_keywords", "topic"]);
 });
 
 test("recommended mode applies language and country overrides", async () => {
@@ -86,8 +90,10 @@ test("dashboard view keeps internal scores separate from the agent response", as
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.ok(result.dashboard_research.primary_keyword.score >= 0);
+  assert.ok(result.dashboard_research.diversity_keywords.length <= 3);
   assert.equal(typeof result.primary_keyword.keyword, "string");
   assert.ok(result.supporting_keywords.every(({ keyword, score }) => typeof keyword === "string" && typeof score === "string"));
+  assert.ok(result.diversity_keywords.every(({ keyword, score }) => typeof keyword === "string" && typeof score === "string"));
 });
 
 test("empty provider results are reported as a warning", async () => {

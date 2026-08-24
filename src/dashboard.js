@@ -150,7 +150,14 @@ export function renderDashboardPage() {
         const supportingKeywords = document.createElement("div"); supportingKeywords.className = "supporting-keywords";
         research.supporting_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); supportingKeywords.append(keywordRow); });
         supportingCard.append(supportingTitle, supportingExplanation, supportingKeywords);
-        humanOutput.append(primary, supportingHeading, supportingCard);
+        const diversityHeading = document.createElement("h3"); diversityHeading.className = "supporting-heading"; diversityHeading.textContent = "Diversity keywords (" + research.diversity_keywords.length + ")";
+        const diversityCard = document.createElement("div"); diversityCard.className = "supporting-card";
+        const diversityTitle = document.createElement("h3"); diversityTitle.textContent = "Diversity keywords";
+        const diversityExplanation = document.createElement("p"); diversityExplanation.className = "muted"; diversityExplanation.textContent = "Use these less repetitive, still relevant queries to broaden the article’s coverage.";
+        const diversityKeywords = document.createElement("div"); diversityKeywords.className = "supporting-keywords";
+        research.diversity_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); diversityKeywords.append(keywordRow); });
+        diversityCard.append(diversityTitle, diversityExplanation, diversityKeywords);
+        humanOutput.append(primary, supportingHeading, supportingCard, diversityHeading, diversityCard);
       }
 
       form.addEventListener("submit", async (event) => {
@@ -166,8 +173,8 @@ export function renderDashboardPage() {
           const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
           emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Success · " + formatDuration(responseTimeMs); summary.replaceChildren();
-          addSummary("Topic", result.topic); addSummary("Recommendations", String(1 + result.supporting_keywords.length));
-          renderHumanOutput(result); rawResponse.textContent = JSON.stringify({ topic: result.topic, primary_keyword: result.primary_keyword, supporting_keywords: result.supporting_keywords }, null, 2);
+          addSummary("Topic", result.topic); addSummary("Recommendations", String(1 + result.supporting_keywords.length + result.diversity_keywords.length));
+          renderHumanOutput(result); rawResponse.textContent = JSON.stringify({ topic: result.topic, primary_keyword: result.primary_keyword, supporting_keywords: result.supporting_keywords, diversity_keywords: result.diversity_keywords }, null, 2);
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
         finally { submitButton.disabled = false; }
       });

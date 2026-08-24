@@ -6,6 +6,7 @@
     "country": "Czech Republic",
     "search_intent": "informational",
     "supporting_query_limit": 8,
+    "diversity_query_limit": 3,
     "serp_result_limit": 10,
     "suggestion_seed_limit": 8,
     "trends_enabled": true,

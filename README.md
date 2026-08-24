@@ -85,11 +85,14 @@ The compact response uses this shape:
   "primary_keyword": { "keyword": "rodinné domy", "score": "good" },
   "supporting_keywords": [
     { "keyword": "rodinné domy na prodej", "score": "okay" }
+  ],
+  "diversity_keywords": [
+    { "keyword": "stavební povolení", "score": "good" }
   ]
 }
 ```
 
-The numeric score is used internally to rank the supporting keywords and is converted to a qualitative `score` in the agent-facing response. Supporting keywords are returned from strongest to weakest recommendation. The browser dashboard uses a separate internal view so it can still display the numeric score and progress bar for human inspection.
+The numeric score is used internally to rank the supporting and diversity keywords and is converted to a qualitative `score` in the agent-facing response. Supporting keywords are returned from strongest to weakest recommendation. Diversity keywords are a smaller set of up to three more distinct queries selected for broader topical coverage. The browser dashboard uses a separate internal view so it can still display the numeric score and progress bar for human inspection.
 
 Score labels use these ranges: `no evidence` = 0, `weak` = 1–10, `okay` = 11–20, `good` = 21–30, and `strong` = 31 or higher.
 

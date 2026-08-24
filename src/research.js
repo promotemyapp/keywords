@@ -75,7 +75,8 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
   const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
-  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary).map((item) => ({ ...item, role: "supporting" }));
+  const diversity = selectDiversityKeywords(ranked, configuration.diversity_query_limit, primary).map((item) => ({ ...item, role: "diversity" }));
+  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary, new Set(diversity.map(({ keyword }) => keyword))).map((item) => ({ ...item, role: "supporting" }));
   const missingAngles = responses.filter(({ cluster, keywords }) => cluster !== "core" && !keywords.length);
   const contentAngles = seeds.filter(({ cluster }) => cluster !== "core").map(({ query, cluster, role }) => ({ query, cluster, content_role: role, validated: !missingAngles.some((angle) => angle.cluster === cluster) }));
   const warnings = [];
@@ -96,6 +97,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     trends,
     primary_keyword: { ...primary, role: "primary" },
     supporting_keywords: supporting,
+    diversity_keywords: diversity,
     all_candidates: ranked
   };
 }
@@ -162,10 +164,10 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
 }
 
-function selectSupportingKeywords(ranked, limit, primary) {
+function selectSupportingKeywords(ranked, limit, primary, excluded = new Set()) {
   const selected = [];
   const usedClusters = new Set();
-  const candidates = ranked.filter((item) => item !== primary);
+  const candidates = ranked.filter((item) => item !== primary && !excluded.has(item.keyword));
   for (const item of candidates) {
     if (item.cluster === "core" || usedClusters.has(item.cluster)) continue;
     selected.push(item); usedClusters.add(item.cluster);
@@ -177,6 +179,33 @@ function selectSupportingKeywords(ranked, limit, primary) {
     if (selected.length === limit) break;
   }
   return selected;
+}
+
+function selectDiversityKeywords(ranked, limit, primary) {
+  const topicWords = meaningfulWords(primary.keyword);
+  const selected = [];
+  const candidates = ranked.filter((item) => item !== primary && topicWords.some((word) => item.keyword.toLowerCase().includes(word)));
+  while (selected.length < limit && candidates.length) {
+    const best = candidates.reduce((winner, candidate) => {
+      const maxSimilarity = Math.max(tokenSimilarity(candidate.keyword, primary.keyword, topicWords), ...selected.map((item) => tokenSimilarity(candidate.keyword, item.keyword, topicWords)), 0);
+      const newClusterBonus = candidate.cluster !== "core" && !selected.some((item) => item.cluster === candidate.cluster) ? 8 : 0;
+      const newIntentBonus = !selected.some((item) => item.intent === candidate.intent) ? 3 : 0;
+      const diversityScore = candidate.score + newClusterBonus + newIntentBonus - maxSimilarity * 14;
+      return !winner || diversityScore > winner.diversityScore ? { candidate, diversityScore } : winner;
+    }, null);
+    selected.push(best.candidate);
+    candidates.splice(candidates.indexOf(best.candidate), 1);
+  }
+  return selected;
+}
+
+function tokenSimilarity(left, right, ignoredWords = []) {
+  const ignored = new Set(ignoredWords);
+  const a = new Set(meaningfulWords(left).filter((word) => !ignored.has(word)));
+  const b = new Set(meaningfulWords(right).filter((word) => !ignored.has(word)));
+  if (!a.size && !b.size) return 1;
+  const overlap = [...a].filter((word) => b.has(word)).length;
+  return overlap / Math.max(1, new Set([...a, ...b]).size);
 }
 
 function applyTrendSignals(ranked, signals) {

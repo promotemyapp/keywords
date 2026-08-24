@@ -24,7 +24,7 @@ export function validateKeywordResearchConfig(config) {
   }
   if (typeof config.trends_enabled !== "boolean") throw new ConfigurationError("trends_enabled must be a boolean.");
   if (typeof config.trends_timeframe !== "string" || !config.trends_timeframe.trim()) throw new ConfigurationError("trends_timeframe must be a non-empty string.");
-  for (const key of ["supporting_query_limit", "serp_result_limit", "suggestion_seed_limit", "trends_keyword_limit"]) {
+  for (const key of ["supporting_query_limit", "diversity_query_limit", "serp_result_limit", "suggestion_seed_limit", "trends_keyword_limit"]) {
     if (!Number.isInteger(config[key]) || config[key] < 1 || config[key] > 100) throw new ConfigurationError(`${key} must be an integer from 1 through 100.`);
   }
 }
