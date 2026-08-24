@@ -75,7 +75,7 @@ export function renderDashboardPage() {
         <form class="card controls" id="test-form">
           <h2>Build a research request</h2>
           <p class="hint">The topic is required. Audience and market context improve the recommendations.</p>
-          <div class="field"><label for="request-body">Request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"building family houses","audience":"families planning a new home","configuration":{"language":"English","country":"United States","search_intent":"informational"}}</textarea></div>
+          <div class="field"><label for="request-body">Request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"language":"Czech","country":"Czech Republic","search_intent":"informational"}}</textarea></div>
           <button id="submit-button" type="submit">Research keywords</button>
         </form>
         <section class="card results" aria-live="polite">

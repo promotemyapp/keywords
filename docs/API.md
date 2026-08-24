@@ -30,7 +30,7 @@ Open the root URL with a browser to use the dashboard. After a request completes
 ```bash
 curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -H 'Content-Type: application/json' \
-  -d '{"topic":"building family houses","audience":"families planning a new home","configuration":{"country":"United States","language":"English","search_intent":"informational"}}'
+  -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"country":"Czech Republic","language":"Czech","search_intent":"informational"}}'
 ```
 
 `topic` is required. The response includes `research.primary_keyword`, ranked `research.supporting_keywords`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.

@@ -74,7 +74,7 @@ The root URL serves a browser dashboard. It shows the human-readable primary and
 ```bash
 curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -H 'Content-Type: application/json' \
-  -d '{"topic":"building family houses","audience":"families planning a new home"}'
+  -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům"}'
 ```
 
 The response contains `research.primary_keyword`, ranked `research.supporting_keywords`, `research.all_candidates`, Trends signals, source URLs, limitations, and `brief.markdown`.
