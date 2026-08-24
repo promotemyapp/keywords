@@ -44,7 +44,9 @@ As a practical interpretation:
 
 These bands are guidelines, not hard grades. The score can be an integer when it uses only the keyword-matching formula, or a decimal when Google Trends adds a relative-interest signal.
 
-In the browser dashboard, the score is visualized with a green progress bar over a gray track using `50` as the display scale. A score of `25` fills the bar to 50%; a score of `50` or higher fills it completely. The actual score number is shown beside the bar. This is only a visual cap—the API continues to return the original score value.
+In the browser dashboard, the score is visualized with a colored progress bar over a gray track using `50` as the display scale. A score of `25` fills the bar to 50%; a score of `50` or higher fills it completely. The actual score number is shown beside the bar. This is only a visual cap—the API continues to return the original score value.
+
+The fill color also follows the visual score: red for 0–19%, orange for 20–39%, yellow for 40–59%, yellow-green for 60–79%, and green for 80–100% of the 0–50 display scale.
 
 The base score is calculated as:
 

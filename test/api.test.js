@@ -47,6 +47,7 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /keyword-text/);
   assert.match(page, /score-indicator/);
   assert.match(page, /score-fill/);
+  assert.match(page, /medium-high/);
   assert.match(page, /scoreLabel\.textContent = String\(score\)/);
   assert.match(page, /Completed with warnings/);
   assert.match(page, /mode/);
