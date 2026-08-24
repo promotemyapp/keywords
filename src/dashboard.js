@@ -39,6 +39,8 @@ export function renderDashboardPage() {
       .summary-card strong { display: block; margin-top: 4px; font-size: .95rem; line-height: 1.35; }
       .primary { margin-bottom: 24px; padding: 18px; border: 1px solid #bfcdf4; border-radius: 14px; background: linear-gradient(135deg, #f0f4ff, #fbfcff); }
       .primary .keyword-bubble { margin-top: 12px; font-size: 1.05rem; }
+      .supporting-card { margin-bottom: 24px; padding: 18px; border: 1px solid #dce4f2; border-radius: 14px; background: #fff; }
+      .supporting-card .keyword-list { margin-bottom: 0; }
       .keyword-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 24px; }
       .keyword-bubble { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 12px; border: 1px solid #cbd7f3; border-radius: 999px; color: #213a86; background: #f1f4ff; font-weight: 700; }
       .keyword-bubble small { padding: 2px 7px; border-radius: 999px; color: #53627c; background: #fff; font-size: .68rem; font-weight: 800; }
@@ -120,13 +122,16 @@ export function renderDashboardPage() {
         const explanation = document.createElement("p"); explanation.className = "muted"; explanation.textContent = "Use this as the main search target for the blog post.";
         const bubbleList = document.createElement("div"); bubbleList.className = "keyword-list"; addBubble(research.primary_keyword, bubbleList);
         primary.append(heading, explanation, bubbleList);
-        const supportingHeading = document.createElement("h3"); supportingHeading.textContent = "Supporting keywords";
+        const supportingCard = document.createElement("div"); supportingCard.className = "supporting-card";
+        const supportingTitle = document.createElement("h3"); supportingTitle.textContent = "Supporting keywords (" + research.supporting_keywords.length + ")";
+        const supportingExplanation = document.createElement("p"); supportingExplanation.className = "muted"; supportingExplanation.textContent = "Use these related queries as supporting sections or separate content angles.";
         const supporting = document.createElement("div"); supporting.className = "keyword-list";
         research.supporting_keywords.forEach((item) => addBubble(item, supporting));
+        supportingCard.append(supportingTitle, supportingExplanation, supporting);
         const metadata = document.createElement("div"); metadata.className = "meta";
         [research.topic, research.audience && "Audience: " + research.audience, "Providers: " + (research.providers?.join(", ") || research.provider), "Researched: " + research.researched_at].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; metadata.append(tag); });
         const limitation = document.createElement("p"); limitation.className = "muted"; limitation.textContent = research.limitations?.[0] || "";
-        humanOutput.append(primary, supportingHeading, supporting, metadata, limitation);
+        humanOutput.append(primary, supportingCard, metadata, limitation);
       }
 
       form.addEventListener("submit", async (event) => {
