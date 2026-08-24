@@ -80,7 +80,8 @@ function validateResearchInput(topic, configuration) {
 function buildSeeds(topic, audience, configuration) {
   const base = topic.trim();
   const language = languageName(configuration.language);
-  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: build(base), cluster, role }));
+  const seedBase = base.toLocaleLowerCase(languageCode(configuration.language));
+  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: build(seedBase), cluster, role }));
   return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 
