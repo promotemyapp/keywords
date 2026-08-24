@@ -28,6 +28,16 @@ The pipeline is free and unauthenticated. It does not use Google Ads, paid keywo
 
 Each candidate receives a heuristic relevance score for prioritizing blog content. The score is not monthly search volume, CPC, competition, or a prediction of Google ranking position.
 
+### What is included in the score
+
+The score is a combination of signals, with Google Autocomplete as the candidate source:
+
+1. Google Autocomplete supplies related keyword candidates from several topic- and intent-oriented seeds. Autocomplete does not provide a popularity score; it supplies the phrases that can be evaluated.
+2. The API calculates a relevance score from topic matches, audience matches, search intent, seed coverage, exact topic matching, keyword specificity, and question phrasing.
+3. Google Trends adds a secondary signal for the top candidates when available. It contributes normalized relative interest and a small rising-interest bonus.
+
+Google Ads search volume, CPC, paid competition, Search Console data, and organic ranking difficulty are not included.
+
 ### What the number means
 
 The score starts at `0`, but it does not have a fixed maximum such as `100`. It is a relative priority number: a keyword with a higher score is a stronger candidate than one with a lower score in the same research response. Scores from different topics, markets, languages, or research dates should not be compared directly.
@@ -36,11 +46,11 @@ As a practical interpretation:
 
 | Score | Meaning |
 |---:|---|
-| `0` | No supporting research evidence was available. This is also used for the fallback topic when Google Autocomplete returns no candidates. |
-| `1–10` | Weak candidate; limited relevance or evidence. |
-| `11–20` | Relevant candidate with a reasonable content opportunity. |
-| `21–30` | Strong candidate; closely matches the topic and research intent. |
-| `31+` | Very strong candidate within that particular research response; this is not a percentage. |
+| `0` | No supporting research evidence; the API used the supplied topic as a fallback. |
+| `1–10` | Really weak keyword; limited relevance or evidence. |
+| `11–20` | Okay-ish/relevant keyword with a reasonable content opportunity. |
+| `21–30` | Good keyword that closely matches the topic and intent. |
+| `31+` | Really good keyword within that particular research response; this is not a percentage. |
 
 These bands are guidelines, not hard grades. The score can be an integer when it uses only the keyword-matching formula, or a decimal when Google Trends adds a relative-interest signal.
 
