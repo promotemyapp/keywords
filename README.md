@@ -74,7 +74,7 @@ base score =
 
 When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
 
-The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no candidates, the API falls back to the supplied topic with score `0`, returns no supporting keywords, and includes a warning in the response.
+The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no suggestions for a content angle, the API keeps that angle as a transparent `content-angle-template` candidate and includes a warning. If no direct candidate is available at all, it falls back to the supplied topic with score `0`.
 
 The output brief uses this shape:
 

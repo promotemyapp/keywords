@@ -42,16 +42,18 @@ export class ResearchError extends Error {
 export async function researchKeywords({ topic, audience = "", configuration, fetchImpl = fetch, now = () => new Date().toISOString() }) {
   validateResearchInput(topic, configuration);
   const seeds = buildSeeds(topic, audience, configuration);
-  const responses = await Promise.all(seeds.map(async (seed) => ({ ...await fetchSuggestions(seed.query, configuration, fetchImpl), cluster: seed.cluster, content_role: seed.role })));
-  const suggestions = responses.flatMap(({ seed, keywords, cluster, content_role }) => keywords.map((keyword) => ({ keyword, seed, cluster, content_role })));
+  const responses = await Promise.all(seeds.map(async (seed) => ({ ...await fetchSuggestions(seed.query, configuration, fetchImpl, seed.cluster !== "core"), cluster: seed.cluster, content_role: seed.role })));
+  const suggestions = responses.flatMap(({ seed, keywords, cluster, content_role, generatedFallback }) => keywords.map((keyword) => ({ keyword, seed, cluster, content_role, generatedFallback })));
   let ranked = rankSuggestions(suggestions, topic, audience, configuration);
   const trends = configuration.trends_enabled
     ? await fetchTrendSignals(ranked.slice(0, configuration.trends_keyword_limit).map(({ keyword }) => keyword), { ...configuration, fetchImpl })
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
-  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit).map((item) => ({ ...item, role: "supporting" }));
-  const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no suggestions were returned." };
-  const warnings = ranked.length ? [] : ["No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score."];
+  const primary = ranked.find(({ generated_fallback }) => !generated_fallback) ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
+  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary).map((item) => ({ ...item, role: "supporting" }));
+  const warnings = [];
+  if (!ranked.length) warnings.push("No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score.");
+  if (responses.some(({ generatedFallback }) => generatedFallback)) warnings.push("Some content-angle candidates were generated from localized research templates because Google Autocomplete returned no suggestions for those angles.");
 
   return {
     providers: ["google-autocomplete", "google-trends"],
@@ -83,7 +85,7 @@ function buildSeeds(topic, audience, configuration) {
   return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 
-async function fetchSuggestions(seed, configuration, fetchImpl) {
+async function fetchSuggestions(seed, configuration, fetchImpl, useSeedFallback = false) {
   const url = new URL(GOOGLE_SUGGEST_URL);
   url.searchParams.set("client", "firefox");
   url.searchParams.set("q", seed);
@@ -97,18 +99,21 @@ async function fetchSuggestions(seed, configuration, fetchImpl) {
   let payload;
   try { payload = await response.json(); } catch { throw new ResearchError("Keyword suggestion provider returned invalid JSON."); }
   if (!Array.isArray(payload?.[1])) throw new ResearchError("Keyword suggestion provider returned an unexpected response.");
-  return { seed, keywords: payload[1].filter((item) => typeof item === "string").map(normalizeKeyword).filter(Boolean), source: url.toString() };
+  const keywords = payload[1].filter((item) => typeof item === "string").map(normalizeKeyword).filter(Boolean);
+  return { seed, keywords: keywords.length ? keywords : useSeedFallback ? [seed] : [], generatedFallback: !keywords.length && useSeedFallback, source: url.toString() };
 }
 
 function rankSuggestions(suggestions, topic, audience, configuration) {
   const topicWords = meaningfulWords(topic);
   const audienceWords = meaningfulWords(audience);
   const byKeyword = new Map();
-  for (const { keyword, seed, cluster, content_role } of suggestions) {
+  for (const { keyword, seed, cluster, content_role, generatedFallback } of suggestions) {
     const key = keyword.toLowerCase();
-    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map() };
+    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map(), providerEvidence: false, generatedEvidence: false };
     existing.seeds.add(seed);
     if (cluster !== undefined) existing.clusters.set(cluster, content_role);
+    existing.providerEvidence ||= !generatedFallback;
+    existing.generatedEvidence ||= generatedFallback;
     byKeyword.set(key, existing);
   }
   return [...byKeyword.values()].map((item) => {
@@ -122,19 +127,21 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
     const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + (item.keyword.endsWith("?") ? 1 : 0);
     const clusters = [...item.clusters.keys()];
     const cluster = clusters.find((value) => value !== "core") ?? clusters[0] ?? "core";
-    return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
+    const candidateSource = item.providerEvidence && item.generatedEvidence ? "mixed" : item.providerEvidence ? "google-autocomplete" : "content-angle-template";
+    return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", candidate_source: candidateSource, generated_fallback: !item.providerEvidence, rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
 }
 
-function selectSupportingKeywords(ranked, limit) {
+function selectSupportingKeywords(ranked, limit, primary) {
   const selected = [];
   const usedClusters = new Set();
-  for (const item of ranked.slice(1)) {
+  const candidates = ranked.filter((item) => item !== primary);
+  for (const item of candidates) {
     if (item.cluster === "core" || usedClusters.has(item.cluster)) continue;
     selected.push(item); usedClusters.add(item.cluster);
     if (selected.length === limit) return selected;
   }
-  for (const item of ranked.slice(1)) {
+  for (const item of candidates) {
     if (selected.includes(item)) continue;
     selected.push(item);
     if (selected.length === limit) break;

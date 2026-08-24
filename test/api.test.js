@@ -86,9 +86,9 @@ test("empty provider results are reported as a warning", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.research.supporting_keywords.length, 0);
+  assert.ok(result.research.supporting_keywords.length > 0);
   assert.equal(result.research.primary_keyword.score, 0);
-  assert.match(result.research.warnings[0], /No keyword suggestions/);
+  assert.match(result.research.warnings.join(" "), /content-angle candidates/);
 });
 
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
