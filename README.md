@@ -28,6 +28,22 @@ The pipeline is free and unauthenticated. It does not use Google Ads, paid keywo
 
 Each candidate receives a heuristic relevance score for prioritizing blog content. The score is not monthly search volume, CPC, competition, or a prediction of Google ranking position.
 
+### What the number means
+
+The score starts at `0`, but it does not have a fixed maximum such as `100`. It is a relative priority number: a keyword with a higher score is a stronger candidate than one with a lower score in the same research response. Scores from different topics, markets, languages, or research dates should not be compared directly.
+
+As a practical interpretation:
+
+| Score | Meaning |
+|---:|---|
+| `0` | No supporting research evidence was available. This is also used for the fallback topic when Google Autocomplete returns no candidates. |
+| `1–10` | Weak candidate; limited relevance or evidence. |
+| `11–20` | Relevant candidate with a reasonable content opportunity. |
+| `21–30` | Strong candidate; closely matches the topic and research intent. |
+| `31+` | Very strong candidate within that particular research response; this is not a percentage. |
+
+These bands are guidelines, not hard grades. The score can be an integer when it uses only the keyword-matching formula, or a decimal when Google Trends adds a relative-interest signal.
+
 The base score is calculated as:
 
 ```text
