@@ -130,6 +130,28 @@ test("diversity keywords exclude near-duplicate autocomplete variants", async ()
   assert.ok(result.diversity_keywords.length < 3);
 });
 
+test("diversity keywords are reserved before the supporting quota", async () => {
+  const topic = "domácí kváskový chléb";
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const seed = new URL(url).searchParams.get("q");
+      if (seed === topic) return [seed, [topic, `${topic} recept`]];
+      if (seed.includes("cena a náklady")) return [seed, [`${topic} cena`, `${topic} rozpočet`]];
+      if (seed.startsWith("jak funguje")) return [seed, [`jak funguje ${topic}`, `${topic} postup`]];
+      return [seed, []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false, supporting_query_limit: 8, diversity_query_limit: 3 } }) }));
+  const result = await response.json();
+  const returnedSupporting = result.supporting_keywords.map(({ keyword }) => keyword);
+  assert.equal(response.status, 200);
+  assert.ok(result.diversity_keywords.length > 0);
+  assert.ok(result.diversity_keywords.every(({ keyword }) => !returnedSupporting.includes(keyword)));
+});
+
 test("empty provider results are reported as a warning", async () => {
   const handler = createApiHandler({ fetchImpl: async (url) => ({ ok: true, status: 200, async json() { return [new URL(url).searchParams.get("q"), []]; }, async text() { return ""; } }) });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
