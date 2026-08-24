@@ -46,6 +46,9 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Full response for AI agents/);
   assert.match(page, /keyword-bubble/);
   assert.match(page, /keyword-text/);
+  assert.match(page, /score-indicator/);
+  assert.match(page, /score-fill/);
+  assert.match(page, /scoreLabel\.textContent = String\(score\)/);
   assert.match(page, /performance\.now/);
   assert.match(page, /parsed\.topic = topic/);
   assert.doesNotMatch(page, /rodiny plánující nový dům/);
@@ -74,6 +77,16 @@ test("recommended mode applies language and country overrides", async () => {
   assert.equal(response.status, 200);
   assert.equal(result.topic, "building family houses");
   assert.ok(requestedUrls.some((url) => url.hostname === "suggestqueries.google.com" && url.searchParams.get("hl") === "en" && url.searchParams.get("gl") === "us"));
+});
+
+test("dashboard view keeps internal scores separate from the agent response", async () => {
+  const handler = createApiHandler({ fetchImpl: suggestionFetch });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended?view=dashboard", { method: "POST", body: JSON.stringify({ topic: "analytics software" }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.ok(result.dashboard_research.primary_keyword.score >= 0);
+  assert.equal(typeof result.primary_keyword, "string");
+  assert.ok(result.supporting_keywords.every((keyword) => typeof keyword === "string"));
 });
 
 test("empty provider results are reported as a warning", async () => {

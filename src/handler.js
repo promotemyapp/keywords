@@ -27,7 +27,7 @@ export function createApiHandler({ sessionSecret = process.env.SESSION_SECRET, n
       if (request.method === "GET" && path === "/") return request.headers.get("accept")?.includes("text/html") ? htmlResponse(200, renderDashboardPage()) : jsonResponse(200, discovery());
       if (request.method === "GET" && path === "/health") return jsonResponse(200, { status: "ok" });
       if (request.method === "GET" && path === "/v1/config") return jsonResponse(200, loadKeywordResearchConfig());
-      if (request.method === "POST" && (path === "/v1/keywords/recommended" || path === "/v1/keywords/research")) { const body = await readJson(request); return jsonResponse(200, await researchResponse("recommended", body.configuration ?? {}, body, fetchImpl, now)); }
+      if (request.method === "POST" && (path === "/v1/keywords/recommended" || path === "/v1/keywords/research")) { const body = await readJson(request); const dashboardView = new URL(request.url).searchParams.get("view") === "dashboard"; return jsonResponse(200, await researchResponse("recommended", body.configuration ?? {}, body, fetchImpl, now, dashboardView)); }
       if (request.method === "POST" && path === "/v1/keywords/specific") { const body = await readJson(request); return jsonResponse(200, await researchResponse("specific", body.configuration ?? {}, body, fetchImpl, now)); }
       if (request.method === "POST" && path === "/v1/sessions") {
         if (!codec) throw new SessionError("Guided sessions require SESSION_SECRET to be configured.", 503);
@@ -44,14 +44,16 @@ export function createApiHandler({ sessionSecret = process.env.SESSION_SECRET, n
   };
 }
 
-async function researchResponse(mode, overrides, input, fetchImpl, now) {
+async function researchResponse(mode, overrides, input, fetchImpl, now, includeInternal = false) {
   const configuration = resolveKeywordResearchConfig(overrides);
   const research = await researchKeywords({ topic: input.topic, audience: input.audience, configuration, fetchImpl, now });
-  return {
+  const response = {
     topic: research.topic,
     primary_keyword: research.primary_keyword.keyword,
     supporting_keywords: research.supporting_keywords.map(({ keyword }) => keyword)
   };
+  if (includeInternal) response.dashboard_research = research;
+  return response;
 }
 
 function createSession(now, ttl) { return { version: 1, questionIndex: 0, configuration: loadKeywordResearchConfig().defaults, topic: null, audience: null, expiresAt: now() + ttl }; }

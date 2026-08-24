@@ -46,6 +46,15 @@ export function renderDashboardPage() {
       .supporting-keywords { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
       .supporting-keywords .keyword-list { margin: 0; }
       .supporting-card .keyword-bubble { width: 100%; align-items: flex-start; border-radius: 12px; padding: 11px 12px; }
+      .score-indicator { display: inline-flex; flex: 0 0 124px; align-items: center; gap: 7px; }
+      .score-track { flex: 1; height: 7px; overflow: hidden; border-radius: 999px; background: #dce4f2; }
+      .score-fill { display: block; height: 100%; border-radius: inherit; }
+      .score-fill[data-level="low"] { background: #dc3545; }
+      .score-fill[data-level="medium-low"] { background: #f28c28; }
+      .score-fill[data-level="medium"] { background: #e4c441; }
+      .score-fill[data-level="medium-high"] { background: #9fbe3c; }
+      .score-fill[data-level="high"] { background: #239b56; }
+      .score-label { flex: 0 0 auto; color: #53627c; font-size: .68rem; font-weight: 800; white-space: nowrap; }
       .content-angle-card { margin-bottom: 24px; padding: 18px; border: 1px dashed #c9d4e5; border-radius: 14px; background: #fafcff; }
       .content-angle-list { display: grid; gap: 8px; margin: 14px 0 0; }
       .content-angle { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; border-radius: 9px; color: #35435c; background: #eef2f8; font-size: .88rem; }
@@ -115,14 +124,19 @@ export function renderDashboardPage() {
       }
 
       function addBubble(item, parent) {
-        const bubble = document.createElement("span"); bubble.className = "keyword-bubble";
-        const keywordText = document.createElement("span"); keywordText.className = "keyword-text"; keywordText.textContent = item;
-        bubble.append(keywordText);
+        const bubble = document.createElement("span"); bubble.className = "keyword-bubble"; bubble.dataset.intent = item.intent || "informational";
+        const keywordText = document.createElement("span"); keywordText.className = "keyword-text"; keywordText.textContent = item.keyword;
+        const score = Number(item.score ?? 0); const scoreIndicator = document.createElement("span"); scoreIndicator.className = "score-indicator"; scoreIndicator.setAttribute("aria-label", "Score " + score + " out of 50");
+        const scoreRatio = Math.min(1, Math.max(0, score / 50)); const scoreLevel = scoreRatio < .2 ? "low" : scoreRatio < .4 ? "medium-low" : scoreRatio < .6 ? "medium" : scoreRatio < .8 ? "medium-high" : "high";
+        const scoreTrack = document.createElement("span"); scoreTrack.className = "score-track"; const scoreFill = document.createElement("span"); scoreFill.className = "score-fill"; scoreFill.dataset.level = scoreLevel; scoreFill.style.width = scoreRatio * 100 + "%"; scoreTrack.append(scoreFill);
+        const scoreLabel = document.createElement("span"); scoreLabel.className = "score-label"; scoreLabel.textContent = String(score); scoreIndicator.append(scoreTrack, scoreLabel);
+        bubble.append(scoreIndicator);
+        bubble.prepend(keywordText);
         parent.append(bubble);
       }
 
       function renderHumanOutput(result) {
-        const research = result;
+        const research = result.dashboard_research;
         humanOutput.replaceChildren();
         const primary = document.createElement("div"); primary.className = "primary";
         const heading = document.createElement("h3"); heading.textContent = "Primary keyword";
@@ -147,13 +161,13 @@ export function renderDashboardPage() {
           const topic = topicInput.value.trim();
           if (!topic) throw new Error("Enter a topic to research.");
           parsed.topic = topic;
-          const response = await fetch("/v1/keywords/recommended", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
+          const response = await fetch("/v1/keywords/recommended?view=dashboard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
           const result = await response.json();
           const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
           emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Success · " + formatDuration(responseTimeMs); summary.replaceChildren();
           addSummary("Topic", result.topic); addSummary("Recommendations", String(1 + result.supporting_keywords.length));
-          renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2);
+          renderHumanOutput(result); rawResponse.textContent = JSON.stringify({ topic: result.topic, primary_keyword: result.primary_keyword, supporting_keywords: result.supporting_keywords }, null, 2);
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
         finally { submitButton.disabled = false; }
       });

@@ -89,7 +89,7 @@ The compact response uses this shape:
 }
 ```
 
-The score is used internally to rank the supporting keywords and is deliberately omitted from the API response. Supporting keywords are returned from strongest to weakest recommendation.
+The score is used internally to rank the supporting keywords and is deliberately omitted from the agent-facing API response. Supporting keywords are returned from strongest to weakest recommendation. The browser dashboard uses a separate internal view so it can still display the score and progress bar for human inspection.
 
 ## API architecture
 
