@@ -75,8 +75,8 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
   const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
-  const diversity = selectDiversityKeywords(ranked, configuration.diversity_query_limit, primary).map((item) => ({ ...item, role: "diversity" }));
-  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary, new Set(diversity.map(({ keyword }) => keyword))).map((item) => ({ ...item, role: "supporting" }));
+  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary).map((item) => ({ ...item, role: "supporting" }));
+  const diversity = selectDiversityKeywords(ranked, configuration.diversity_query_limit, primary, new Set(supporting.map(({ keyword }) => keyword))).map((item) => ({ ...item, role: "diversity" }));
   const missingAngles = responses.filter(({ cluster, keywords }) => cluster !== "core" && !keywords.length);
   const contentAngles = seeds.filter(({ cluster }) => cluster !== "core").map(({ query, cluster, role }) => ({ query, cluster, content_role: role, validated: !missingAngles.some((angle) => angle.cluster === cluster) }));
   const warnings = [];
@@ -180,12 +180,17 @@ function selectSupportingKeywords(ranked, limit, primary, excluded = new Set()) 
   return selected;
 }
 
-function selectDiversityKeywords(ranked, limit, primary) {
+function selectDiversityKeywords(ranked, limit, primary, excluded = new Set()) {
   const topicWords = meaningfulWords(primary.keyword);
   const selected = [];
-  const candidates = ranked.filter((item) => item !== primary && topicWords.some((word) => item.keyword.toLowerCase().includes(word)));
+  const candidates = ranked.filter((item) => item !== primary && !excluded.has(item.keyword) && topicWords.some((word) => item.keyword.toLowerCase().includes(word)));
   while (selected.length < limit && candidates.length) {
-    const best = candidates.reduce((winner, candidate) => {
+    const diverseCandidates = candidates.filter((candidate) => {
+      const references = [primary, ...selected, ...ranked.filter((item) => excluded.has(item.keyword))];
+      return references.every((reference) => keywordSimilarity(candidate.keyword, reference.keyword) < 0.5 && tokenSimilarity(candidate.keyword, reference.keyword, topicWords) < 0.5);
+    });
+    if (!diverseCandidates.length) break;
+    const best = diverseCandidates.reduce((winner, candidate) => {
       const maxSimilarity = Math.max(tokenSimilarity(candidate.keyword, primary.keyword, topicWords), ...selected.map((item) => tokenSimilarity(candidate.keyword, item.keyword, topicWords)), 0);
       const newClusterBonus = candidate.cluster !== "core" && !selected.some((item) => item.cluster === candidate.cluster) ? 8 : 0;
       const newIntentBonus = !selected.some((item) => item.intent === candidate.intent) ? 3 : 0;
@@ -203,6 +208,13 @@ function tokenSimilarity(left, right, ignoredWords = []) {
   const a = new Set(meaningfulWords(left).filter((word) => !ignored.has(word)));
   const b = new Set(meaningfulWords(right).filter((word) => !ignored.has(word)));
   if (!a.size && !b.size) return 1;
+  const overlap = [...a].filter((word) => b.has(word)).length;
+  return overlap / Math.max(1, new Set([...a, ...b]).size);
+}
+
+function keywordSimilarity(left, right) {
+  const a = new Set(meaningfulWords(left));
+  const b = new Set(meaningfulWords(right));
   const overlap = [...a].filter((word) => b.has(word)).length;
   return overlap / Math.max(1, new Set([...a, ...b]).size);
 }

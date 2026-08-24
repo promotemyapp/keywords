@@ -112,6 +112,24 @@ test("dashboard view keeps internal scores separate from the agent response", as
   assert.ok(result.diversity_keywords.every(({ keyword, score }) => typeof keyword === "string" && typeof score === "string"));
 });
 
+test("diversity keywords exclude near-duplicate autocomplete variants", async () => {
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const query = new URL(url).searchParams.get("q");
+      return [query, query === "bivak na ryby" ? [
+        "bivak na ryby bez podlahy", "bivak na ryby pro 4 osoby", "bivak na ryby bazar", "bivak na ryby pro 1", "bivak na ryby pro 2", "bivak na ryby pro 3", "bivak na ryby pro 2 bazar", "bivak na ryby decathlon"
+      ] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "bivak na ryby", configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.ok(result.diversity_keywords.length < 3);
+});
+
 test("empty provider results are reported as a warning", async () => {
   const handler = createApiHandler({ fetchImpl: async (url) => ({ ok: true, status: 200, async json() { return [new URL(url).searchParams.get("q"), []]; }, async text() { return ""; } }) });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));

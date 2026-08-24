@@ -153,7 +153,7 @@ export function renderDashboardPage() {
         const diversityHeading = document.createElement("h3"); diversityHeading.className = "supporting-heading"; diversityHeading.textContent = "Diversity keywords (" + research.diversity_keywords.length + ")";
         const diversityCard = document.createElement("div"); diversityCard.className = "supporting-card";
         const diversityTitle = document.createElement("h3"); diversityTitle.textContent = "Diversity keywords";
-        const diversityExplanation = document.createElement("p"); diversityExplanation.className = "muted"; diversityExplanation.textContent = "Use these less repetitive, still relevant queries to broaden the article’s coverage.";
+        const diversityExplanation = document.createElement("p"); diversityExplanation.className = "muted"; diversityExplanation.textContent = "These are genuinely different, still relevant queries that broaden the article’s coverage. The list can be shorter when research does not find enough distinct results.";
         const diversityKeywords = document.createElement("div"); diversityKeywords.className = "supporting-keywords";
         research.diversity_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); diversityKeywords.append(keywordRow); });
         diversityCard.append(diversityTitle, diversityExplanation, diversityKeywords);
