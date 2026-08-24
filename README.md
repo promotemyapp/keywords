@@ -18,9 +18,10 @@ Blog-post templates, authors, personas, portraits, post profiles, and publishing
 1. Builds research seeds from the topic, audience, and selected search intent.
 2. Collects related queries from Google Autocomplete.
 3. Deduplicates and classifies candidates by search intent.
-4. Ranks candidates for topic relevance, audience relevance, seed coverage, and intent match.
-5. Adds Google Trends relative-interest and direction signals when available.
-6. Returns a primary keyword, supporting keywords, methodology, limitations, sources, and a YAML brief for a blog-writing agent.
+4. Groups candidates into content-angle clusters such as costs, process, permits, plans, materials, financing, mistakes, energy, and maintenance.
+5. Ranks candidates for topic relevance, audience relevance, seed coverage, and intent match, then selects supporting keywords from different clusters to avoid repetitive variants.
+6. Adds Google Trends relative-interest and direction signals when available.
+7. Returns a primary keyword, diverse supporting keywords with content roles, methodology, limitations, sources, and a YAML brief for a blog-writing agent.
 
 The pipeline is free and unauthenticated. It does not use Google Ads, paid keyword tools, or Search Console. Google Autocomplete and Google Trends provide useful directional signals, but they do not provide exact monthly search volume, CPC, paid competition, organic difficulty, or guaranteed ranking potential.
 

@@ -10,6 +10,30 @@ const INTENT_TERMS = {
   navigational: ["login", "support", "contact", "website", "official"]
 };
 const LANGUAGE_CODES = { czech: "cs", english: "en", german: "de", french: "fr", spanish: "es", italian: "it", polish: "pl", slovak: "sk", dutch: "nl", portuguese: "pt", russian: "ru", ukrainian: "uk" };
+const CONTENT_ANGLE_SEEDS = {
+  czech: [
+    { cluster: "costs", role: "budget and costs", build: (topic) => `náklady na ${topic}` },
+    { cluster: "process", role: "process and timeline", build: (topic) => `jak probíhá ${topic}` },
+    { cluster: "permits", role: "permits and regulations", build: (topic) => `povolení pro ${topic}` },
+    { cluster: "plans", role: "plans and design", build: (topic) => `projekt a plán ${topic}` },
+    { cluster: "materials", role: "materials and technology", build: (topic) => `materiály pro ${topic}` },
+    { cluster: "financing", role: "financing", build: (topic) => `financování ${topic}` },
+    { cluster: "mistakes", role: "mistakes and risks", build: (topic) => `chyby při ${topic}` },
+    { cluster: "energy", role: "energy efficiency", build: (topic) => `energeticky úsporné ${topic}` },
+    { cluster: "maintenance", role: "maintenance", build: (topic) => `údržba ${topic}` }
+  ],
+  english: [
+    { cluster: "costs", role: "budget and costs", build: (topic) => `cost of ${topic}` },
+    { cluster: "process", role: "process and timeline", build: (topic) => `how to ${topic}` },
+    { cluster: "permits", role: "permits and regulations", build: (topic) => `${topic} permits and regulations` },
+    { cluster: "plans", role: "plans and design", build: (topic) => `${topic} plans and design` },
+    { cluster: "materials", role: "materials and technology", build: (topic) => `best materials for ${topic}` },
+    { cluster: "financing", role: "financing", build: (topic) => `financing ${topic}` },
+    { cluster: "mistakes", role: "mistakes and risks", build: (topic) => `common mistakes in ${topic}` },
+    { cluster: "energy", role: "energy efficiency", build: (topic) => `energy efficient ${topic}` },
+    { cluster: "maintenance", role: "maintenance", build: (topic) => `maintenance of ${topic}` }
+  ]
+};
 
 export class ResearchError extends Error {
   constructor(message, status = 502) { super(message); this.name = "ResearchError"; this.status = status; }
@@ -18,14 +42,14 @@ export class ResearchError extends Error {
 export async function researchKeywords({ topic, audience = "", configuration, fetchImpl = fetch, now = () => new Date().toISOString() }) {
   validateResearchInput(topic, configuration);
   const seeds = buildSeeds(topic, audience, configuration);
-  const responses = await Promise.all(seeds.map((seed) => fetchSuggestions(seed, configuration, fetchImpl)));
-  const suggestions = responses.flatMap(({ seed, keywords }) => keywords.map((keyword) => ({ keyword, seed })));
+  const responses = await Promise.all(seeds.map(async (seed) => ({ ...await fetchSuggestions(seed.query, configuration, fetchImpl), cluster: seed.cluster, content_role: seed.role })));
+  const suggestions = responses.flatMap(({ seed, keywords, cluster, content_role }) => keywords.map((keyword) => ({ keyword, seed, cluster, content_role })));
   let ranked = rankSuggestions(suggestions, topic, audience, configuration);
   const trends = configuration.trends_enabled
     ? await fetchTrendSignals(ranked.slice(0, configuration.trends_keyword_limit).map(({ keyword }) => keyword), { ...configuration, fetchImpl })
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
-  const supporting = ranked.slice(1, configuration.supporting_query_limit).map((item) => ({ ...item, role: "supporting" }));
+  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit).map((item) => ({ ...item, role: "supporting" }));
   const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no suggestions were returned." };
   const warnings = ranked.length ? [] : ["No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score."];
 
@@ -35,7 +59,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     topic: topic.trim(),
     audience: audience.trim() || null,
     market: { language: configuration.language, country: configuration.country },
-    methodology: "Related search suggestions were collected from multiple intent-oriented seeds, deduplicated, classified, and ranked with relative Google Trends interest as a free secondary signal.",
+    methodology: "Related search suggestions were collected from localized content-angle seeds, deduplicated, classified into content clusters, ranked, and diversified with relative Google Trends interest as a free secondary signal.",
     limitations: ["Autocomplete suggestions are directional signals, not monthly search volume.", "Google Trends values are normalized relative interest, not absolute search counts.", "CPC, paid competition, and organic ranking difficulty are not available from this free pipeline.", "Suggestions and trend values can vary by location, language, time, and Google's systems."],
     sources: [...responses.map(({ seed, source }) => ({ provider: "google-autocomplete", seed, url: source })), ...trends.sources.map((url) => ({ provider: "google-trends", url }))],
     warnings,
@@ -54,8 +78,9 @@ function validateResearchInput(topic, configuration) {
 function buildSeeds(topic, audience, configuration) {
   const base = topic.trim();
   const audiencePart = audience.trim() ? ` ${audience.trim()}` : "";
-  const modifiers = INTENT_TERMS[configuration.search_intent] ?? INTENT_TERMS.informational;
-  return [...new Set([base, ...modifiers.slice(0, configuration.suggestion_seed_limit - 1).map((modifier) => `${modifier} ${base}${audiencePart}`)])].slice(0, configuration.suggestion_seed_limit);
+  const language = languageName(configuration.language);
+  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: `${build(base)}${audiencePart}`, cluster, role }));
+  return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 
 async function fetchSuggestions(seed, configuration, fetchImpl) {
@@ -79,10 +104,11 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
   const topicWords = meaningfulWords(topic);
   const audienceWords = meaningfulWords(audience);
   const byKeyword = new Map();
-  for (const { keyword, seed } of suggestions) {
+  for (const { keyword, seed, cluster, content_role } of suggestions) {
     const key = keyword.toLowerCase();
-    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set() };
+    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map() };
     existing.seeds.add(seed);
+    if (cluster !== undefined) existing.clusters.set(cluster, content_role);
     byKeyword.set(key, existing);
   }
   return [...byKeyword.values()].map((item) => {
@@ -94,8 +120,26 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
     const exactTopicBonus = keywordWords.join(" ") === topicWords.join(" ") ? 6 : 0;
     const specificityBonus = Math.min(3, Math.max(0, keywordWords.length - topicWords.length));
     const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + (item.keyword.endsWith("?") ? 1 : 0);
-    return { keyword: item.keyword, intent, score, sources: [...item.seeds], rationale: rationaleFor(item.keyword, intent, item.seeds.size) };
+    const clusters = [...item.clusters.keys()];
+    const cluster = clusters.find((value) => value !== "core") ?? clusters[0] ?? "core";
+    return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
+}
+
+function selectSupportingKeywords(ranked, limit) {
+  const selected = [];
+  const usedClusters = new Set();
+  for (const item of ranked.slice(1)) {
+    if (item.cluster === "core" || usedClusters.has(item.cluster)) continue;
+    selected.push(item); usedClusters.add(item.cluster);
+    if (selected.length === limit) return selected;
+  }
+  for (const item of ranked.slice(1)) {
+    if (selected.includes(item)) continue;
+    selected.push(item);
+    if (selected.length === limit) break;
+  }
+  return selected;
 }
 
 function applyTrendSignals(ranked, signals) {
@@ -114,8 +158,9 @@ function classifyIntent(keyword, preferred) {
   return best.count > 0 ? best.intent : preferred;
 }
 
-function rationaleFor(keyword, intent, sourceCount) { return `${intent[0].toUpperCase()}${intent.slice(1)} query found in ${sourceCount} research seed${sourceCount === 1 ? "" : "s"}; assess it as a distinct blog section or article angle.`; }
+function rationaleFor(keyword, intent, sourceCount, clusters) { const clusterText = clusters.size ? `; mapped to ${[...clusters.keys()].join(", ")} content angle${clusters.size === 1 ? "" : "s"}` : ""; return `${intent[0].toUpperCase()} query found in ${sourceCount} research seed${sourceCount === 1 ? "" : "s"}${clusterText}; assess it as a distinct blog section or article angle.`; }
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
 function meaningfulWords(value) { return value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
+function languageName(value) { return value.toLowerCase().split(/[-_\s]/)[0] || "english"; }
 function languageCode(value) { const language = value.toLowerCase().split(/[-_\s]/)[0] || "en"; return LANGUAGE_CODES[language] ?? language; }
 function countryCode(value) { const normalized = value.toLowerCase(); if (normalized.includes("czech")) return "cz"; if (normalized.includes("united states") || normalized === "usa") return "us"; return value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "us"; }

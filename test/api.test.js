@@ -66,6 +66,8 @@ test("recommended mode returns a keyword brief", async () => {
   assert.match(result.brief.markdown, /analytics software/);
   assert.match(result.guidance.markdown, /Keyword research workflow/);
   assert.ok(new Set(result.research.all_candidates.map(({ score }) => score)).size > 1);
+  assert.ok(new Set(result.research.supporting_keywords.map(({ cluster }) => cluster)).size > 1);
+  assert.ok(result.research.supporting_keywords.every(({ content_role }) => content_role));
 });
 
 test("recommended mode applies language and country overrides", async () => {

@@ -33,7 +33,7 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"country":"Czech Republic","language":"Czech","search_intent":"informational"}}'
 ```
 
-`topic` is required. The response includes `research.primary_keyword`, ranked `research.supporting_keywords`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
+`topic` is required. The response includes `research.primary_keyword`, diverse `research.supporting_keywords` selected from different content clusters, each with a `cluster` and `content_role`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
 
 The free providers are Google autocomplete and Google Trends. Trends returns normalized relative interest and direction, not exact monthly volume. The response does not claim CPC, difficulty, or ranking position.
 
