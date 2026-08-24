@@ -58,6 +58,8 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /performance\.now/);
   assert.match(page, /parsed\.topic = topic/);
   assert.doesNotMatch(page, /rodiny plánující nový dům/);
+  assert.doesNotMatch(page, /"audience"/);
+  assert.match(page, /Search intent is optional/);
 });
 
 test("recommended mode returns a keyword brief", async () => {

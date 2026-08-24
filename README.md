@@ -1,6 +1,6 @@
 # Marketing Keyword Research API
 
-This service researches keywords for marketing blog posts. An AI agent or another client sends a topic, optional audience, and optional market configuration. The API discovers related search language, adds free Google Trends signals, ranks the candidates, and returns a structured content brief.
+This service researches keywords for marketing blog posts. An AI agent or another client sends a topic and optional language/country configuration. The API discovers related search language, adds free Google Trends signals, ranks the candidates, and returns a structured content brief.
 
 Blog-post templates, authors, personas, portraits, post profiles, and publishing workflows belong to the separate reference project and are intentionally out of scope here.
 
@@ -127,7 +127,7 @@ The root URL serves a browser dashboard. It shows the human-readable primary and
 ```bash
 curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -H 'Content-Type: application/json' \
-  -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům"}'
+  -d '{"topic":"Rodinné domy","configuration":{"language":"Czech","country":"Czech Republic"}}'
 ```
 
 The response contains `research.primary_keyword`, ranked `research.supporting_keywords`, `research.all_candidates`, Trends signals, source URLs, limitations, and `brief.markdown`.
@@ -141,7 +141,6 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/specific \
   -H 'Content-Type: application/json' \
   -d '{
     "topic":"inventory software",
-    "audience":"independent retailers",
     "configuration":{
       "language":"German",
       "country":"Germany",

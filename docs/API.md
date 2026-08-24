@@ -30,7 +30,7 @@ Open the root URL with a browser to use the dashboard. After a request completes
 ```bash
 curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -H 'Content-Type: application/json' \
-  -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"country":"Czech Republic","language":"Czech","search_intent":"informational"}}'
+  -d '{"topic":"Rodinné domy","configuration":{"country":"Czech Republic","language":"Czech"}}'
 ```
 
 `topic` is required. The response includes `research.primary_keyword`, diverse validated `research.supporting_keywords` selected from different content clusters, exploratory `research.content_angles` with validation state, each keyword with a `cluster` and `content_role`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
@@ -42,11 +42,9 @@ The free providers are Google Autocomplete and Google Trends. When Autocomplete 
 ```json
 {
   "topic": "inventory software",
-  "audience": "independent retailers",
   "configuration": {
     "language": "German",
     "country": "Germany",
-    "search_intent": "commercial",
     "supporting_query_limit": 6
   }
 }

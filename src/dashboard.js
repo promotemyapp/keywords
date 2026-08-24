@@ -89,7 +89,7 @@ export function renderDashboardPage() {
           <h2>Build a research request</h2>
           <p class="hint">Enter a topic and the API will discover diverse keyword angles automatically.</p>
           <div class="field"><label for="topic-input">Topic to research</label><input id="topic-input" type="text" value="Rodinné domy" autocomplete="off"></div>
-          <div class="field"><label for="request-body">Advanced request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"Rodinné domy","configuration":{"language":"Czech","country":"Czech Republic","search_intent":"informational"}}</textarea></div>
+          <div class="field"><label for="request-body">Advanced request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"Rodinné domy","configuration":{"language":"Czech","country":"Czech Republic"}}</textarea><p class="hint">Search intent is optional and defaults to informational: searches focused on explanations, guides, and how-to content.</p></div>
           <button id="submit-button" type="submit">Research keywords</button>
         </form>
         <section class="card results" aria-live="polite">
