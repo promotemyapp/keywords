@@ -43,18 +43,20 @@ export class ResearchError extends Error {
 export async function researchKeywords({ topic, audience = "", configuration, fetchImpl = fetch, now = () => new Date().toISOString() }) {
   validateResearchInput(topic, configuration);
   const seeds = buildSeeds(topic, audience, configuration);
-  const responses = await Promise.all(seeds.map(async (seed) => ({ ...await fetchSuggestions(seed.query, configuration, fetchImpl, seed.cluster !== "core"), cluster: seed.cluster, content_role: seed.role })));
-  const suggestions = responses.flatMap(({ seed, keywords, cluster, content_role, generatedFallback }) => keywords.map((keyword) => ({ keyword, seed, cluster, content_role, generatedFallback })));
+  const responses = await Promise.all(seeds.map(async (seed) => ({ ...await fetchSuggestions(seed.query, configuration, fetchImpl), cluster: seed.cluster, content_role: seed.role })));
+  const suggestions = responses.flatMap(({ seed, keywords, cluster, content_role }) => keywords.map((keyword) => ({ keyword, seed, cluster, content_role })));
   let ranked = rankSuggestions(suggestions, topic, audience, configuration);
   const trends = configuration.trends_enabled
     ? await fetchTrendSignals(ranked.slice(0, configuration.trends_keyword_limit).map(({ keyword }) => keyword), { ...configuration, fetchImpl })
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
-  const primary = ranked.find(({ generated_fallback }) => !generated_fallback) ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
+  const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
   const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary).map((item) => ({ ...item, role: "supporting" }));
+  const missingAngles = responses.filter(({ cluster, keywords }) => cluster !== "core" && !keywords.length);
+  const contentAngles = seeds.filter(({ cluster }) => cluster !== "core").map(({ query, cluster, role }) => ({ query, cluster, content_role: role, validated: !missingAngles.some((angle) => angle.cluster === cluster) }));
   const warnings = [];
   if (!ranked.length) warnings.push("No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score.");
-  if (responses.some(({ generatedFallback }) => generatedFallback)) warnings.push("Some content-angle candidates were generated from localized research templates because Google Autocomplete returned no suggestions for those angles.");
+  if (missingAngles.length) warnings.push(`${missingAngles.length} exploratory content angle${missingAngles.length === 1 ? "" : "s"} returned no validated Google Autocomplete keyword. These angles are provided separately and are not counted as keywords.`);
 
   return {
     providers: ["google-autocomplete", "google-trends"],
@@ -66,6 +68,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     limitations: ["Autocomplete suggestions are directional signals, not monthly search volume.", "Google Trends values are normalized relative interest, not absolute search counts.", "CPC, paid competition, and organic ranking difficulty are not available from this free pipeline.", "Suggestions and trend values can vary by location, language, time, and Google's systems."],
     sources: [...responses.map(({ seed, source }) => ({ provider: "google-autocomplete", seed, url: source })), ...trends.sources.map((url) => ({ provider: "google-trends", url }))],
     warnings,
+    content_angles: contentAngles,
     trends,
     primary_keyword: { ...primary, role: "primary" },
     supporting_keywords: supporting,
@@ -87,7 +90,7 @@ function buildSeeds(topic, audience, configuration) {
   return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 
-async function fetchSuggestions(seed, configuration, fetchImpl, useSeedFallback = false) {
+async function fetchSuggestions(seed, configuration, fetchImpl) {
   const url = new URL(GOOGLE_SUGGEST_URL);
   url.searchParams.set("client", "firefox");
   url.searchParams.set("q", seed);
@@ -102,20 +105,18 @@ async function fetchSuggestions(seed, configuration, fetchImpl, useSeedFallback 
   try { payload = await response.json(); } catch { throw new ResearchError("Keyword suggestion provider returned invalid JSON."); }
   if (!Array.isArray(payload?.[1])) throw new ResearchError("Keyword suggestion provider returned an unexpected response.");
   const keywords = payload[1].filter((item) => typeof item === "string").map(normalizeKeyword).filter(Boolean);
-  return { seed, keywords: keywords.length ? keywords : useSeedFallback ? [seed] : [], generatedFallback: !keywords.length && useSeedFallback, source: url.toString() };
+  return { seed, keywords, source: url.toString() };
 }
 
 function rankSuggestions(suggestions, topic, audience, configuration) {
   const topicWords = meaningfulWords(topic);
   const audienceWords = meaningfulWords(audience);
   const byKeyword = new Map();
-  for (const { keyword, seed, cluster, content_role, generatedFallback } of suggestions) {
+  for (const { keyword, seed, cluster, content_role } of suggestions) {
     const key = keyword.toLowerCase();
-    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map(), providerEvidence: false, generatedEvidence: false };
+    const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map() };
     existing.seeds.add(seed);
     if (cluster !== undefined) existing.clusters.set(cluster, content_role);
-    existing.providerEvidence ||= !generatedFallback;
-    existing.generatedEvidence ||= generatedFallback;
     byKeyword.set(key, existing);
   }
   return [...byKeyword.values()].map((item) => {
@@ -130,8 +131,7 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
     const cluster = clusters.find((value) => value !== "core") ?? clusters[0] ?? "core";
     const angleBonus = ANGLE_BONUSES[cluster] ?? 0;
     const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + angleBonus + (item.keyword.endsWith("?") ? 1 : 0);
-    const candidateSource = item.providerEvidence && item.generatedEvidence ? "mixed" : item.providerEvidence ? "google-autocomplete" : "content-angle-template";
-    return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", candidate_source: candidateSource, generated_fallback: !item.providerEvidence, rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
+    return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", candidate_source: "google-autocomplete", rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
 }
 
@@ -172,6 +172,10 @@ function rationaleFor(keyword, intent, sourceCount, clusters) { const clusterTex
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
 function meaningfulWords(value) { return value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
 function languageName(value) { return value.toLowerCase().split(/[-_\s]/)[0] || "english"; }
-function czechTopicForms(topic) { return topic === "rodinné domy" ? { genitive: "rodinného domu", singular: "rodinný dům" } : { genitive: topic, singular: topic }; }
+function czechTopicForms(topic) {
+  if (topic === "rodinné domy") return { genitive: "rodinného domu", singular: "rodinný dům" };
+  if (topic === "stavební deník") return { genitive: "stavebního deníku", singular: "stavební deník" };
+  return { genitive: topic, singular: topic };
+}
 function languageCode(value) { const language = value.toLowerCase().split(/[-_\s]/)[0] || "en"; return LANGUAGE_CODES[language] ?? language; }
 function countryCode(value) { const normalized = value.toLowerCase(); if (normalized.includes("czech")) return "cz"; if (normalized.includes("united states") || normalized === "usa") return "us"; return value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "us"; }

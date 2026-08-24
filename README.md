@@ -19,9 +19,9 @@ Blog-post templates, authors, personas, portraits, post profiles, and publishing
 2. Collects related queries from Google Autocomplete.
 3. Deduplicates and classifies candidates by search intent.
 4. Groups candidates into content-angle clusters such as costs, process, permits, plans, materials, financing, mistakes, energy, and maintenance.
-5. Ranks candidates for topic relevance, audience relevance, seed coverage, and intent match, then selects supporting keywords from different clusters to avoid repetitive variants.
+5. Ranks validated candidates for topic relevance, audience relevance, seed coverage, and intent match, then selects supporting keywords from different clusters to avoid repetitive variants.
 6. Adds Google Trends relative-interest and direction signals when available.
-7. Returns a primary keyword, diverse supporting keywords with content roles, methodology, limitations, sources, and a YAML brief for a blog-writing agent.
+7. Returns a primary keyword, diverse validated supporting keywords with content roles, exploratory content angles, methodology, limitations, sources, and a YAML brief for a blog-writing agent.
 
 The pipeline is free and unauthenticated. It does not use Google Ads, paid keyword tools, or Search Console. Google Autocomplete and Google Trends provide useful directional signals, but they do not provide exact monthly search volume, CPC, paid competition, organic difficulty, or guaranteed ranking potential.
 
@@ -75,7 +75,7 @@ base score =
 
 When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
 
-The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no suggestions for a content angle, the API keeps that angle as a transparent `content-angle-template` candidate and includes a warning. If no direct candidate is available at all, it falls back to the supplied topic with score `0`.
+The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no suggestion for a content angle, the API returns that angle separately in `content_angles` with `validated: false`; it is an exploratory prompt, not a keyword and is not included in the score ranking. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`.
 
 The output brief uses this shape:
 

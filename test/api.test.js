@@ -43,6 +43,8 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Topic to research/);
   assert.match(page, /supporting-card/);
   assert.match(page, /supporting-keywords/);
+  assert.match(page, /content-angle-card/);
+  assert.match(page, /Exploratory content angles/);
   assert.match(page, /Full response for AI agents/);
   assert.match(page, /Generated keyword brief \(YAML\)/);
   assert.match(page, /keyword-bubble/);
@@ -89,18 +91,20 @@ test("empty provider results are reported as a warning", async () => {
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.ok(result.research.supporting_keywords.length > 0);
+  assert.equal(result.research.supporting_keywords.length, 0);
   assert.equal(result.research.primary_keyword.score, 0);
-  assert.match(result.research.warnings.join(" "), /content-angle candidates/);
+  assert.match(result.research.warnings.join(" "), /exploratory content angle/);
+  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
 });
 
-test("Czech angle fallbacks use grammatical phrases and varied scores", async () => {
+test("Czech exploratory angles use grammatical phrases without becoming fake keywords", async () => {
   const handler = createApiHandler({ fetchImpl: async () => ({ ok: true, status: 200, async json() { return ["query", []]; }, async text() { return ""; } }) });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
   const result = await response.json();
-  const keywords = result.research.supporting_keywords.map(({ keyword }) => keyword);
-  assert.ok(keywords.includes("chyby při stavbě rodinného domu"));
-  assert.ok(new Set(result.research.supporting_keywords.map(({ score }) => score)).size > 1);
+  const angles = result.research.content_angles.map(({ query }) => query);
+  assert.ok(angles.includes("chyby při stavbě rodinného domu"));
+  assert.equal(result.research.supporting_keywords.length, 0);
+  assert.ok(result.research.content_angles.every(({ validated }) => validated === false));
 });
 
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {

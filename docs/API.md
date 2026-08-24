@@ -33,9 +33,9 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"country":"Czech Republic","language":"Czech","search_intent":"informational"}}'
 ```
 
-`topic` is required. The response includes `research.primary_keyword`, diverse `research.supporting_keywords` selected from different content clusters, each with a `cluster` and `content_role`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
+`topic` is required. The response includes `research.primary_keyword`, diverse validated `research.supporting_keywords` selected from different content clusters, exploratory `research.content_angles` with validation state, each keyword with a `cluster` and `content_role`, Google Trends signals, all deduplicated candidates, source URLs, methodology, limitations, and a `brief.markdown` YAML document ready for a blog-writing agent.
 
-The free providers are Google autocomplete and Google Trends. When Autocomplete has no result for a localized content angle, the API can retain the angle seed as a transparent `content-angle-template` candidate so the supporting set remains diverse. Trends returns normalized relative interest and direction, not exact monthly volume. The response does not claim CPC, difficulty, or ranking position.
+The free providers are Google Autocomplete and Google Trends. When Autocomplete has no result for a localized content angle, the API returns the angle separately as an unvalidated exploratory prompt; it does not present it as a researched keyword. Trends returns normalized relative interest and direction, not exact monthly volume. The response does not claim CPC, difficulty, or ranking position.
 
 ## Specific request
 

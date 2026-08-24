@@ -46,6 +46,10 @@ export function renderDashboardPage() {
       .supporting-keywords { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 16px; }
       .supporting-keywords .keyword-list { margin: 0; }
       .supporting-card .keyword-bubble { width: 100%; align-items: flex-start; border-radius: 12px; padding: 11px 12px; }
+      .content-angle-card { margin-bottom: 24px; padding: 18px; border: 1px dashed #c9d4e5; border-radius: 14px; background: #fafcff; }
+      .content-angle-list { display: grid; gap: 8px; margin: 14px 0 0; }
+      .content-angle { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; border-radius: 9px; color: #35435c; background: #eef2f8; font-size: .88rem; }
+      .content-angle small { flex: 0 0 auto; color: #63718a; font-weight: 800; }
       .keyword-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 24px; }
       .keyword-bubble { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 12px; border: 1px solid #cbd7f3; border-radius: 999px; color: #213a86; background: #f1f4ff; font-weight: 700; }
       .keyword-bubble .keyword-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
@@ -150,11 +154,17 @@ export function renderDashboardPage() {
         const supportingKeywords = document.createElement("div"); supportingKeywords.className = "supporting-keywords";
         research.supporting_keywords.forEach((item) => { const keywordRow = document.createElement("div"); keywordRow.className = "keyword-list"; addBubble(item, keywordRow); supportingKeywords.append(keywordRow); });
         supportingCard.append(supportingTitle, supportingExplanation, supportingKeywords);
+        const angleCard = document.createElement("div"); angleCard.className = "content-angle-card";
+        const angleTitle = document.createElement("h3"); angleTitle.textContent = "Exploratory content angles";
+        const angleExplanation = document.createElement("p"); angleExplanation.className = "muted"; angleExplanation.textContent = "These are research prompts generated for coverage. Only validated Google Autocomplete results are shown as keywords above.";
+        const angleList = document.createElement("div"); angleList.className = "content-angle-list";
+        (result.research.content_angles || []).forEach((angle) => { const row = document.createElement("div"); row.className = "content-angle"; const query = document.createElement("span"); query.textContent = angle.query; const state = document.createElement("small"); state.textContent = angle.validated ? "validated angle" : "exploratory only"; row.append(query, state); angleList.append(row); });
+        angleCard.append(angleTitle, angleExplanation, angleList);
         const metadata = document.createElement("div"); metadata.className = "meta";
         [research.topic, research.audience && "Audience: " + research.audience, "Providers: " + (research.providers?.join(", ") || research.provider), "Researched: " + research.researched_at].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; metadata.append(tag); });
         const warning = document.createElement("p"); warning.className = "muted"; warning.textContent = research.warnings?.join(" ") || "";
         const limitation = document.createElement("p"); limitation.className = "muted"; limitation.textContent = research.limitations?.[0] || "";
-        humanOutput.append(primary, supportingHeading, supportingCard, metadata, warning, limitation);
+        humanOutput.append(primary, supportingHeading, supportingCard, angleCard, metadata, warning, limitation);
       }
 
       form.addEventListener("submit", async (event) => {
