@@ -39,6 +39,8 @@ test("browser console includes human and agent response views", async () => {
   assert.equal(response.status, 200);
   assert.match(page, /Primary keyword/);
   assert.match(page, /Supporting keywords/);
+  assert.match(page, /topic-input/);
+  assert.match(page, /Topic to research/);
   assert.match(page, /supporting-card/);
   assert.match(page, /supporting-keywords/);
   assert.match(page, /Full response for AI agents/);
@@ -52,6 +54,7 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Completed with warnings/);
   assert.match(page, /mode/);
   assert.match(page, /performance\.now/);
+  assert.match(page, /parsed\.topic = topic/);
 });
 
 test("recommended mode returns a keyword brief", async () => {

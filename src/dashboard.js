@@ -24,7 +24,8 @@ export function renderDashboardPage() {
       .results { min-height: 520px; padding: 24px; }
       .field { display: grid; gap: 7px; margin-top: 18px; }
       label { color: #35435c; font-size: .88rem; font-weight: 750; }
-      textarea, button { font: inherit; }
+      input, textarea, button { font: inherit; }
+      input { width: 100%; border: 1px solid #c9d4e5; border-radius: 10px; color: #16213a; background: #fff; padding: 11px 12px; }
       textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid #c9d4e5; border-radius: 10px; color: #16213a; background: #fff; padding: 10px 12px; font: .82rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
       button { width: 100%; margin-top: 22px; border: 0; border-radius: 10px; padding: 12px 16px; color: #fff; background: #2449bd; cursor: pointer; font-weight: 800; }
       button:hover { background: #1e3da2; }
@@ -82,8 +83,9 @@ export function renderDashboardPage() {
       <div class="layout">
         <form class="card controls" id="test-form">
           <h2>Build a research request</h2>
-          <p class="hint">The topic is required. Audience and market context improve the recommendations.</p>
-          <div class="field"><label for="request-body">Request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"language":"Czech","country":"Czech Republic","search_intent":"informational"}}</textarea></div>
+          <p class="hint">Enter a topic and the API will discover diverse keyword angles automatically.</p>
+          <div class="field"><label for="topic-input">Topic to research</label><input id="topic-input" type="text" value="Rodinné domy" autocomplete="off"></div>
+          <div class="field"><label for="request-body">Advanced request JSON</label><textarea id="request-body" spellcheck="false">{"topic":"Rodinné domy","audience":"rodiny plánující nový dům","configuration":{"language":"Czech","country":"Czech Republic","search_intent":"informational"}}</textarea></div>
           <button id="submit-button" type="submit">Research keywords</button>
         </form>
         <section class="card results" aria-live="polite">
@@ -103,6 +105,7 @@ export function renderDashboardPage() {
     <script>
       const form = document.getElementById("test-form");
       const requestBody = document.getElementById("request-body");
+      const topicInput = document.getElementById("topic-input");
       const submitButton = document.getElementById("submit-button");
       const emptyState = document.getElementById("empty-state");
       const responseContent = document.getElementById("response-content");
@@ -159,6 +162,9 @@ export function renderDashboardPage() {
         const requestStartedAt = performance.now();
         try {
           const parsed = JSON.parse(requestBody.value);
+          const topic = topicInput.value.trim();
+          if (!topic) throw new Error("Enter a topic to research.");
+          parsed.topic = topic;
           const response = await fetch("/v1/keywords/recommended", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
           const result = await response.json();
           const responseTimeMs = performance.now() - requestStartedAt;
