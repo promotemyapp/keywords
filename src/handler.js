@@ -56,7 +56,7 @@ async function researchResponse(mode, overrides, input, fetchImpl, now, includeI
   return response;
 }
 
-function compactKeyword({ keyword, score }) { return { keyword, score_label: scoreLabel(score) }; }
+function compactKeyword({ keyword, score }) { return { keyword, score: scoreLabel(score) }; }
 function scoreLabel(score) {
   if (score <= 0) return "no evidence";
   if (score <= 10) return "weak";

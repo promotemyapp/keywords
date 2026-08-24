@@ -64,8 +64,8 @@ test("recommended mode returns compact keyword recommendations", async () => {
   assert.equal(result.topic, "analytics software");
   assert.match(result.primary_keyword.keyword, /analytics software/);
   assert.ok(result.supporting_keywords.length > 0);
-  assert.ok(["no evidence", "weak", "okay", "good", "strong"].includes(result.primary_keyword.score_label));
-  assert.ok(result.supporting_keywords.every(({ keyword, score_label }) => keyword && ["no evidence", "weak", "okay", "good", "strong"].includes(score_label)));
+  assert.ok(["no evidence", "weak", "okay", "good", "strong"].includes(result.primary_keyword.score));
+  assert.ok(result.supporting_keywords.every(({ keyword, score }) => keyword && ["no evidence", "weak", "okay", "good", "strong"].includes(score)));
   assert.ok(result.supporting_keywords.length > 1);
   assert.deepEqual(Object.keys(result).sort(), ["primary_keyword", "supporting_keywords", "topic"]);
 });
@@ -87,7 +87,7 @@ test("dashboard view keeps internal scores separate from the agent response", as
   assert.equal(response.status, 200);
   assert.ok(result.dashboard_research.primary_keyword.score >= 0);
   assert.equal(typeof result.primary_keyword.keyword, "string");
-  assert.ok(result.supporting_keywords.every(({ keyword, score_label }) => typeof keyword === "string" && typeof score_label === "string"));
+  assert.ok(result.supporting_keywords.every(({ keyword, score }) => typeof keyword === "string" && typeof score === "string"));
 });
 
 test("empty provider results are reported as a warning", async () => {
