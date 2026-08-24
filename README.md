@@ -24,6 +24,27 @@ Blog-post templates, authors, personas, portraits, post profiles, and publishing
 
 The pipeline is free and unauthenticated. It does not use Google Ads, paid keyword tools, or Search Console. Google Autocomplete and Google Trends provide useful directional signals, but they do not provide exact monthly search volume, CPC, paid competition, organic difficulty, or guaranteed ranking potential.
 
+## Keyword score calculation
+
+Each candidate receives a heuristic relevance score for prioritizing blog content. The score is not monthly search volume, CPC, competition, or a prediction of Google ranking position.
+
+The base score is calculated as:
+
+```text
+base score =
+  topic-word matches × 5
+  + audience-word matches × 2
+  + number of research seeds containing the keyword × 3
+  + 4 when the keyword matches the selected search intent
+  + 6 when the keyword exactly matches the supplied topic
+  + specificity bonus from 0 to 3 for additional meaningful words
+  + 1 when the keyword is a question
+```
+
+When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
+
+The primary keyword usually receives the exact-topic bonus. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If Google Autocomplete returns no candidates, the API falls back to the supplied topic with score `0`, returns no supporting keywords, and includes a warning in the response.
+
 The output brief uses this shape:
 
 ```yaml
