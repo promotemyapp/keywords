@@ -64,6 +64,7 @@ async function fetchSuggestions(seed, configuration, fetchImpl) {
   url.searchParams.set("q", seed);
   url.searchParams.set("hl", languageCode(configuration.language));
   url.searchParams.set("gl", countryCode(configuration.country));
+  url.searchParams.set("oe", "utf-8");
   let response;
   try { response = await fetchImpl(url, { headers: { Accept: "application/json" } }); }
   catch (error) { throw new ResearchError(`Keyword suggestion provider could not be reached: ${error.message}`); }
@@ -112,6 +113,6 @@ function classifyIntent(keyword, preferred) {
 
 function rationaleFor(keyword, intent, sourceCount) { return `${intent[0].toUpperCase()}${intent.slice(1)} query found in ${sourceCount} research seed${sourceCount === 1 ? "" : "s"}; assess it as a distinct blog section or article angle.`; }
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
-function meaningfulWords(value) { return value.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
+function meaningfulWords(value) { return value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
 function languageCode(value) { const language = value.toLowerCase().split(/[-_\s]/)[0] || "en"; return LANGUAGE_CODES[language] ?? language; }
 function countryCode(value) { const normalized = value.toLowerCase(); if (normalized.includes("czech")) return "cz"; if (normalized.includes("united states") || normalized === "usa") return "us"; return value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "us"; }

@@ -84,6 +84,17 @@ test("empty provider results are reported as a warning", async () => {
   assert.match(result.research.warnings[0], /No keyword suggestions/);
 });
 
+test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
+  const requestedUrls = [];
+  const handler = createApiHandler({ fetchImpl: async (url) => { requestedUrls.push(new URL(url)); return { ok: true, status: 200, async json() { return ["Rodinné domy", ["rodinné domy na prodej"]]; } }; } });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.research.primary_keyword.keyword, "rodinné domy na prodej");
+  assert.match(result.research.primary_keyword.keyword, /é/);
+  assert.ok(requestedUrls.filter((url) => url.hostname === "suggestqueries.google.com").every((url) => url.searchParams.get("oe") === "utf-8"));
+});
+
 test("specific mode validates and applies overrides", async () => {
   const handler = createApiHandler({ fetchImpl: suggestionFetch });
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/specific", { method: "POST", body: JSON.stringify({ topic: "inventory software", configuration: { language: "German", country: "Germany", supporting_query_limit: 6 } }) }));
