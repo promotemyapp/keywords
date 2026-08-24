@@ -89,8 +89,11 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
     const normalized = item.keyword.toLowerCase();
     const topicMatches = topicWords.filter((word) => normalized.includes(word)).length;
     const audienceMatches = audienceWords.filter((word) => normalized.includes(word)).length;
+    const keywordWords = meaningfulWords(item.keyword);
     const intent = classifyIntent(item.keyword, configuration.search_intent);
-    const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + (item.keyword.endsWith("?") ? 1 : 0);
+    const exactTopicBonus = keywordWords.join(" ") === topicWords.join(" ") ? 6 : 0;
+    const specificityBonus = Math.min(3, Math.max(0, keywordWords.length - topicWords.length));
+    const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + (item.keyword.endsWith("?") ? 1 : 0);
     return { keyword: item.keyword, intent, score, sources: [...item.seeds], rationale: rationaleFor(item.keyword, intent, item.seeds.size) };
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
 }
