@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "description": "Reusable writing personas cataloged by canonical SOUL.md files.",
+  "default_persona": "persona_a",
+  "personas": {
+    "persona_a": {
+      "id": "persona_a",
+      "name": "Persona A",
+      "soul_file": "personas/persona-a/SOUL.md"
+    },
+    "persona_b": {
+      "id": "persona_b",
+      "name": "Persona B",
+      "soul_file": "personas/persona-b/SOUL.md"
+    },
+    "persona_c": {
+      "id": "persona_c",
+      "name": "Persona C",
+      "soul_file": "personas/persona-c/SOUL.md"
+    }
+  }
+}

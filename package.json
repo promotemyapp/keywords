@@ -1,0 +1,17 @@
+{
+  "name": "reusable-marketing-post-templates",
+  "version": "0.2.20",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "start": "bun src/server.js",
+    "test": "bun test"
+  },
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14"
+  }
+}
