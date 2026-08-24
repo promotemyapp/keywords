@@ -48,7 +48,10 @@ export function renderDashboardPage() {
       .keyword-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 24px; }
       .keyword-bubble { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 12px; border: 1px solid #cbd7f3; border-radius: 999px; color: #213a86; background: #f1f4ff; font-weight: 700; }
       .keyword-bubble .keyword-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-      .keyword-bubble small { flex: 0 0 auto; white-space: nowrap; padding: 2px 7px; border-radius: 999px; color: #53627c; background: #fff; font-size: .68rem; font-weight: 800; }
+      .score-indicator { display: inline-flex; flex: 0 0 124px; align-items: center; gap: 7px; }
+      .score-track { flex: 1; height: 7px; overflow: hidden; border-radius: 999px; background: #dce4f2; }
+      .score-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6d8df5, #2449bd); }
+      .score-label { flex: 0 0 auto; color: #53627c; font-size: .68rem; font-weight: 800; white-space: nowrap; }
       .keyword-bubble[data-intent="commercial"] { color: #6a4213; border-color: #f0d39a; background: #fff8e9; }
       .keyword-bubble[data-intent="transactional"] { color: #145c45; border-color: #b4dfce; background: #effbf6; }
       .keyword-bubble[data-intent="navigational"] { color: #5b2c78; border-color: #d9b9e9; background: #fbf3ff; }
@@ -115,7 +118,10 @@ export function renderDashboardPage() {
       function addBubble(item, parent) {
         const bubble = document.createElement("span"); bubble.className = "keyword-bubble"; bubble.dataset.intent = item.intent || "informational";
         const keywordText = document.createElement("span"); keywordText.className = "keyword-text"; keywordText.textContent = item.keyword;
-        const score = document.createElement("small"); score.textContent = "score " + (item.score ?? 0); bubble.append(score);
+        const score = Number(item.score ?? 0); const scoreIndicator = document.createElement("span"); scoreIndicator.className = "score-indicator"; scoreIndicator.setAttribute("aria-label", "Score " + score + " out of 50");
+        const scoreTrack = document.createElement("span"); scoreTrack.className = "score-track"; const scoreFill = document.createElement("span"); scoreFill.className = "score-fill"; scoreFill.style.width = Math.min(100, Math.max(0, score / 50 * 100)) + "%"; scoreTrack.append(scoreFill);
+        const scoreLabel = document.createElement("span"); scoreLabel.className = "score-label"; scoreLabel.textContent = score > 50 ? "50+ / 50" : score + " / 50"; scoreIndicator.append(scoreTrack, scoreLabel);
+        bubble.append(scoreIndicator);
         bubble.prepend(keywordText);
         parent.append(bubble);
       }

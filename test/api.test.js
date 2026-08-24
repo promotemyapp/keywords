@@ -45,6 +45,8 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Generated keyword brief \(YAML\)/);
   assert.match(page, /keyword-bubble/);
   assert.match(page, /keyword-text/);
+  assert.match(page, /score-indicator/);
+  assert.match(page, /score-fill/);
   assert.match(page, /Completed with warnings/);
   assert.match(page, /mode/);
   assert.match(page, /performance\.now/);

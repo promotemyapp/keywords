@@ -44,6 +44,8 @@ As a practical interpretation:
 
 These bands are guidelines, not hard grades. The score can be an integer when it uses only the keyword-matching formula, or a decimal when Google Trends adds a relative-interest signal.
 
+In the browser dashboard, the score is visualized with a progress bar using `50` as the display scale. A score of `25` fills the bar to 50%; a score of `50` or higher fills it completely. This is only a visual cap—the API continues to return the original score value.
+
 The base score is calculated as:
 
 ```text
