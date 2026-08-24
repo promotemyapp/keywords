@@ -91,6 +91,15 @@ test("empty provider results are reported as a warning", async () => {
   assert.match(result.research.warnings.join(" "), /content-angle candidates/);
 });
 
+test("Czech angle fallbacks use grammatical phrases and varied scores", async () => {
+  const handler = createApiHandler({ fetchImpl: async () => ({ ok: true, status: 200, async json() { return ["query", []]; }, async text() { return ""; } }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic" } }) }));
+  const result = await response.json();
+  const keywords = result.research.supporting_keywords.map(({ keyword }) => keyword);
+  assert.ok(keywords.includes("chyby při stavbě rodinného domu"));
+  assert.ok(new Set(result.research.supporting_keywords.map(({ score }) => score)).size > 1);
+});
+
 test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
   const requestedUrls = [];
   const handler = createApiHandler({ fetchImpl: async (url) => { requestedUrls.push(new URL(url)); return { ok: true, status: 200, async json() { return ["Rodinné domy", ["rodinné domy na prodej"]]; } }; } });

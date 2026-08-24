@@ -10,17 +10,18 @@ const INTENT_TERMS = {
   navigational: ["login", "support", "contact", "website", "official"]
 };
 const LANGUAGE_CODES = { czech: "cs", english: "en", german: "de", french: "fr", spanish: "es", italian: "it", polish: "pl", slovak: "sk", dutch: "nl", portuguese: "pt", russian: "ru", ukrainian: "uk" };
+const ANGLE_BONUSES = { costs: 4, process: 3, permits: 4, plans: 3, materials: 2, financing: 4, mistakes: 3, energy: 3, maintenance: 2 };
 const CONTENT_ANGLE_SEEDS = {
   czech: [
-    { cluster: "costs", role: "budget and costs", build: (topic) => `náklady na ${topic}` },
-    { cluster: "process", role: "process and timeline", build: (topic) => `jak probíhá ${topic}` },
-    { cluster: "permits", role: "permits and regulations", build: (topic) => `povolení pro ${topic}` },
-    { cluster: "plans", role: "plans and design", build: (topic) => `projekt a plán ${topic}` },
-    { cluster: "materials", role: "materials and technology", build: (topic) => `materiály pro ${topic}` },
-    { cluster: "financing", role: "financing", build: (topic) => `financování ${topic}` },
-    { cluster: "mistakes", role: "mistakes and risks", build: (topic) => `chyby při ${topic}` },
-    { cluster: "energy", role: "energy efficiency", build: (topic) => `energeticky úsporné ${topic}` },
-    { cluster: "maintenance", role: "maintenance", build: (topic) => `údržba ${topic}` }
+    { cluster: "costs", role: "budget and costs", build: (topic, forms) => `náklady na stavbu ${forms.genitive}` },
+    { cluster: "process", role: "process and timeline", build: (topic, forms) => `jak probíhá stavba ${forms.genitive}` },
+    { cluster: "permits", role: "permits and regulations", build: (topic, forms) => `stavební povolení pro ${forms.singular}` },
+    { cluster: "plans", role: "plans and design", build: (topic, forms) => `projekt ${forms.genitive}` },
+    { cluster: "materials", role: "materials and technology", build: (topic, forms) => `materiály pro stavbu ${forms.genitive}` },
+    { cluster: "financing", role: "financing", build: (topic, forms) => `financování stavby ${forms.genitive}` },
+    { cluster: "mistakes", role: "mistakes and risks", build: (topic, forms) => `chyby při stavbě ${forms.genitive}` },
+    { cluster: "energy", role: "energy efficiency", build: (topic, forms) => `energeticky úsporný ${forms.singular}` },
+    { cluster: "maintenance", role: "maintenance", build: (topic, forms) => `údržba ${forms.genitive}` }
   ],
   english: [
     { cluster: "costs", role: "budget and costs", build: (topic) => `cost of ${topic}` },
@@ -81,7 +82,8 @@ function buildSeeds(topic, audience, configuration) {
   const base = topic.trim();
   const language = languageName(configuration.language);
   const seedBase = base.toLocaleLowerCase(languageCode(configuration.language));
-  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: build(seedBase), cluster, role }));
+  const forms = language === "czech" ? czechTopicForms(seedBase) : { genitive: seedBase, singular: seedBase };
+  const angleSeeds = (CONTENT_ANGLE_SEEDS[language] ?? CONTENT_ANGLE_SEEDS.english).map(({ cluster, role, build }) => ({ query: build(seedBase, forms), cluster, role }));
   return [{ query: base, cluster: "core", role: "main topic" }, ...angleSeeds].slice(0, configuration.suggestion_seed_limit);
 }
 
@@ -124,9 +126,10 @@ function rankSuggestions(suggestions, topic, audience, configuration) {
     const intent = classifyIntent(item.keyword, configuration.search_intent);
     const exactTopicBonus = keywordWords.join(" ") === topicWords.join(" ") ? 6 : 0;
     const specificityBonus = Math.min(3, Math.max(0, keywordWords.length - topicWords.length));
-    const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + (item.keyword.endsWith("?") ? 1 : 0);
     const clusters = [...item.clusters.keys()];
     const cluster = clusters.find((value) => value !== "core") ?? clusters[0] ?? "core";
+    const angleBonus = ANGLE_BONUSES[cluster] ?? 0;
+    const score = topicMatches * 5 + audienceMatches * 2 + item.seeds.size * 3 + (intent === configuration.search_intent ? 4 : 0) + exactTopicBonus + specificityBonus + angleBonus + (item.keyword.endsWith("?") ? 1 : 0);
     const candidateSource = item.providerEvidence && item.generatedEvidence ? "mixed" : item.providerEvidence ? "google-autocomplete" : "content-angle-template";
     return { keyword: item.keyword, intent, score, sources: [...item.seeds], cluster, clusters, content_role: item.clusters.get(cluster) ?? "main topic", candidate_source: candidateSource, generated_fallback: !item.providerEvidence, rationale: rationaleFor(item.keyword, intent, item.seeds.size, item.clusters) };
   }).sort((a, b) => b.score - a.score || a.keyword.localeCompare(b.keyword));
@@ -169,5 +172,6 @@ function rationaleFor(keyword, intent, sourceCount, clusters) { const clusterTex
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
 function meaningfulWords(value) { return value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
 function languageName(value) { return value.toLowerCase().split(/[-_\s]/)[0] || "english"; }
+function czechTopicForms(topic) { return topic === "rodinné domy" ? { genitive: "rodinného domu", singular: "rodinný dům" } : { genitive: topic, singular: topic }; }
 function languageCode(value) { const language = value.toLowerCase().split(/[-_\s]/)[0] || "en"; return LANGUAGE_CODES[language] ?? language; }
 function countryCode(value) { const normalized = value.toLowerCase(); if (normalized.includes("czech")) return "cz"; if (normalized.includes("united states") || normalized === "usa") return "us"; return value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "us"; }

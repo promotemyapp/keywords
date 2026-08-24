@@ -69,6 +69,7 @@ base score =
   + 4 when the keyword matches the selected search intent
   + 6 when the keyword exactly matches the supplied topic
   + specificity bonus from 0 to 3 for additional meaningful words
+  + content-angle usefulness bonus from 0 to 4
   + 1 when the keyword is a question
 ```
 
