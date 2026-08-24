@@ -40,14 +40,15 @@ export function renderDashboardPage() {
       .primary { margin-bottom: 24px; padding: 18px; border: 1px solid #bfcdf4; border-radius: 14px; background: linear-gradient(135deg, #f0f4ff, #fbfcff); }
       .primary .keyword-bubble { margin-top: 12px; font-size: 1.05rem; }
       .supporting-heading { margin-bottom: 12px; }
-      .supporting-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
-      .supporting-card { padding: 16px; border: 1px solid #dce4f2; border-radius: 14px; background: #fff; }
+      .supporting-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 24px; }
+      .supporting-card { min-width: 0; padding: 16px; border: 1px solid #dce4f2; border-radius: 14px; background: #fff; }
       .supporting-card h3 { margin-bottom: 6px; }
       .supporting-card .keyword-list { margin-bottom: 0; }
-      .supporting-card .keyword-bubble { width: 100%; justify-content: space-between; }
+      .supporting-card .keyword-bubble { width: 100%; align-items: flex-start; border-radius: 12px; padding: 11px 12px; }
       .keyword-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 24px; }
       .keyword-bubble { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 9px 12px; border: 1px solid #cbd7f3; border-radius: 999px; color: #213a86; background: #f1f4ff; font-weight: 700; }
-      .keyword-bubble small { padding: 2px 7px; border-radius: 999px; color: #53627c; background: #fff; font-size: .68rem; font-weight: 800; }
+      .keyword-bubble .keyword-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+      .keyword-bubble small { flex: 0 0 auto; white-space: nowrap; padding: 2px 7px; border-radius: 999px; color: #53627c; background: #fff; font-size: .68rem; font-weight: 800; }
       .keyword-bubble[data-intent="commercial"] { color: #6a4213; border-color: #f0d39a; background: #fff8e9; }
       .keyword-bubble[data-intent="transactional"] { color: #145c45; border-color: #b4dfce; background: #effbf6; }
       .keyword-bubble[data-intent="navigational"] { color: #5b2c78; border-color: #d9b9e9; background: #fbf3ff; }
@@ -113,8 +114,9 @@ export function renderDashboardPage() {
 
       function addBubble(item, parent) {
         const bubble = document.createElement("span"); bubble.className = "keyword-bubble"; bubble.dataset.intent = item.intent || "informational";
-        bubble.append(document.createTextNode(item.keyword));
+        const keywordText = document.createElement("span"); keywordText.className = "keyword-text"; keywordText.textContent = item.keyword;
         const score = document.createElement("small"); score.textContent = "score " + (item.score ?? 0); bubble.append(score);
+        bubble.prepend(keywordText);
         parent.append(bubble);
       }
 
