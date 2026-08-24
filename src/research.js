@@ -9,6 +9,7 @@ const INTENT_TERMS = {
   transactional: ["buy", "price", "cost", "quote", "near me", "service", "builder", "company"],
   navigational: ["login", "support", "contact", "website", "official"]
 };
+const LANGUAGE_CODES = { czech: "cs", english: "en", german: "de", french: "fr", spanish: "es", italian: "it", polish: "pl", slovak: "sk", dutch: "nl", portuguese: "pt", russian: "ru", ukrainian: "uk" };
 
 export class ResearchError extends Error {
   constructor(message, status = 502) { super(message); this.name = "ResearchError"; this.status = status; }
@@ -26,6 +27,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
   ranked = applyTrendSignals(ranked, trends.signals);
   const supporting = ranked.slice(1, configuration.supporting_query_limit).map((item) => ({ ...item, role: "supporting" }));
   const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no suggestions were returned." };
+  const warnings = ranked.length ? [] : ["No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score."];
 
   return {
     providers: ["google-autocomplete", "google-trends"],
@@ -36,6 +38,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     methodology: "Related search suggestions were collected from multiple intent-oriented seeds, deduplicated, classified, and ranked with relative Google Trends interest as a free secondary signal.",
     limitations: ["Autocomplete suggestions are directional signals, not monthly search volume.", "Google Trends values are normalized relative interest, not absolute search counts.", "CPC, paid competition, and organic ranking difficulty are not available from this free pipeline.", "Suggestions and trend values can vary by location, language, time, and Google's systems."],
     sources: [...responses.map(({ seed, source }) => ({ provider: "google-autocomplete", seed, url: source })), ...trends.sources.map((url) => ({ provider: "google-trends", url }))],
+    warnings,
     trends,
     primary_keyword: { ...primary, role: "primary" },
     supporting_keywords: supporting,
@@ -110,5 +113,5 @@ function classifyIntent(keyword, preferred) {
 function rationaleFor(keyword, intent, sourceCount) { return `${intent[0].toUpperCase()}${intent.slice(1)} query found in ${sourceCount} research seed${sourceCount === 1 ? "" : "s"}; assess it as a distinct blog section or article angle.`; }
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
 function meaningfulWords(value) { return value.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
-function languageCode(value) { return value.toLowerCase().split(/[-_\s]/)[0] || "en"; }
+function languageCode(value) { const language = value.toLowerCase().split(/[-_\s]/)[0] || "en"; return LANGUAGE_CODES[language] ?? language; }
 function countryCode(value) { const normalized = value.toLowerCase(); if (normalized.includes("czech")) return "cz"; if (normalized.includes("united states") || normalized === "usa") return "us"; return value.toLowerCase().replace(/[^a-z]/g, "").slice(0, 2) || "us"; }

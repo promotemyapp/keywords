@@ -44,7 +44,7 @@ test("browser console includes human and agent response views", async () => {
   assert.match(page, /Full response for AI agents/);
   assert.match(page, /Generated keyword brief \(YAML\)/);
   assert.match(page, /keyword-bubble/);
-  assert.match(page, /Success ·/);
+  assert.match(page, /Completed with warnings/);
   assert.match(page, /mode/);
   assert.match(page, /performance\.now/);
 });
@@ -60,6 +60,27 @@ test("recommended mode returns a keyword brief", async () => {
   assert.equal(result.research.trends.status, "available");
   assert.match(result.brief.markdown, /analytics software/);
   assert.match(result.guidance.markdown, /Keyword research workflow/);
+});
+
+test("recommended mode applies language and country overrides", async () => {
+  const requestedUrls = [];
+  const handler = createApiHandler({ fetchImpl: async (url) => { requestedUrls.push(new URL(url)); return suggestionFetch(url); } });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses", configuration: { language: "English", country: "United States" } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.configuration.language, "English");
+  assert.equal(result.configuration.country, "United States");
+  assert.ok(requestedUrls.some((url) => url.hostname === "suggestqueries.google.com" && url.searchParams.get("hl") === "en" && url.searchParams.get("gl") === "us"));
+});
+
+test("empty provider results are reported as a warning", async () => {
+  const handler = createApiHandler({ fetchImpl: async (url) => ({ ok: true, status: 200, async json() { return [new URL(url).searchParams.get("q"), []]; }, async text() { return ""; } }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.research.supporting_keywords.length, 0);
+  assert.equal(result.research.primary_keyword.score, 0);
+  assert.match(result.research.warnings[0], /No keyword suggestions/);
 });
 
 test("specific mode validates and applies overrides", async () => {

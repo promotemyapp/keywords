@@ -137,8 +137,9 @@ export function renderDashboardPage() {
         });
         const metadata = document.createElement("div"); metadata.className = "meta";
         [research.topic, research.audience && "Audience: " + research.audience, "Providers: " + (research.providers?.join(", ") || research.provider), "Researched: " + research.researched_at].filter(Boolean).forEach((value) => { const tag = document.createElement("span"); tag.textContent = value; metadata.append(tag); });
+        const warning = document.createElement("p"); warning.className = "muted"; warning.textContent = research.warnings?.join(" ") || "";
         const limitation = document.createElement("p"); limitation.className = "muted"; limitation.textContent = research.limitations?.[0] || "";
-        humanOutput.append(primary, supportingHeading, supportingCards, metadata, limitation);
+        humanOutput.append(primary, supportingHeading, supportingCards, metadata, warning, limitation);
       }
 
       form.addEventListener("submit", async (event) => {
@@ -150,7 +151,7 @@ export function renderDashboardPage() {
           const result = await response.json();
           const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
-          emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Success · " + formatDuration(responseTimeMs) + " · " + result.mode + " mode"; summary.replaceChildren();
+          emptyState.hidden = true; responseContent.hidden = false; status.textContent = (result.research.warnings?.length ? "Completed with warnings" : "Success") + " · " + formatDuration(responseTimeMs) + " · " + result.mode + " mode"; summary.replaceChildren();
           addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length));
           renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2); brief.textContent = result.brief.markdown; guidance.textContent = result.guidance.markdown;
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
