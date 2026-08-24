@@ -131,17 +131,23 @@ export function renderDashboardPage() {
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); submitButton.disabled = true; status.textContent = "Researching keyword suggestions…"; status.className = "status";
+        const requestStartedAt = performance.now();
         try {
           const parsed = JSON.parse(requestBody.value);
           const response = await fetch("/v1/keywords/recommended", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(parsed) });
           const result = await response.json();
+          const responseTimeMs = performance.now() - requestStartedAt;
           if (!response.ok) throw new Error(result.error || "The API request failed.");
           emptyState.hidden = true; responseContent.hidden = false; status.textContent = "Research complete"; summary.replaceChildren();
-          addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length));
+          addSummary("Topic", result.research.topic); addSummary("Primary intent", result.research.primary_keyword.intent); addSummary("Candidates", String(result.research.all_candidates.length)); addSummary("Response time", formatDuration(responseTimeMs));
           renderHumanOutput(result); rawResponse.textContent = JSON.stringify(result, null, 2); brief.textContent = result.brief.markdown; guidance.textContent = result.guidance.markdown;
         } catch (error) { status.textContent = error.message; status.className = "status error"; emptyState.hidden = false; responseContent.hidden = true; }
         finally { submitButton.disabled = false; }
       });
+
+      function formatDuration(milliseconds) {
+        return milliseconds < 1000 ? Math.round(milliseconds) + " ms" : (milliseconds / 1000).toFixed(2) + " s";
+      }
     </script>
   </body>
 </html>`;
