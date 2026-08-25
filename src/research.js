@@ -204,7 +204,9 @@ function selectSupportingKeywords(ranked, limit, primary, excluded = new Set()) 
 
 function buildFallbackKeywords(topic, configuration, ranked) {
   const minimumNeeded = MIN_SUPPORTING_KEYWORDS + MIN_DIVERSITY_KEYWORDS;
-  if (ranked.length >= minimumNeeded + 1 && ranked.some(({ cluster }) => cluster !== "core")) return [];
+  const topicWords = comparisonWords(topic);
+  const hasPotentialDiversity = ranked.some(({ cluster, keyword }) => cluster !== "core" && topicWords.some((word) => normalizeForComparison(keyword).includes(word)));
+  if (ranked.length >= minimumNeeded + 1 && hasPotentialDiversity) return [];
   const existing = new Set(ranked.map(({ keyword }) => normalizeForComparison(keyword)));
   const language = languageName(configuration.language);
   const templates = language === "czech"
