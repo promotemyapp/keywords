@@ -4,8 +4,9 @@ import { createApiHandler } from "../../src/handler.js";
 const topicsPath = new URL("../topics/topics-100-cs.json", import.meta.url);
 const outputPath = process.argv[2] ?? "testing/benchmarks/2026-08-24/benchmark.md";
 const limit = Number(process.argv[3] ?? 100);
+const offset = Number(process.argv[4] ?? 0);
 const concurrency = 5;
-const topics = (JSON.parse(await readFile(topicsPath, "utf8"))).slice(0, limit);
+const topics = (JSON.parse(await readFile(topicsPath, "utf8"))).slice(offset, offset + limit);
 const handler = createApiHandler();
 const results = [];
 
@@ -49,6 +50,7 @@ const lines = [
   "Endpoint: `POST /v1/keywords/recommended`",
   "Konfigurace: `language: Czech`, `country: Czech Republic`",
   `Počet témat: ${topics.length}`,
+  `Pozice v corpus: ${offset + 1}–${offset + topics.length}`,
   "",
   "## Souhrnné metriky",
   "",
@@ -70,4 +72,4 @@ for (const [index, item] of results.entries()) {
 
 lines.push("## První interpretace", "", "Tento soubor zachycuje raw výsledky a základní metriky. Detailní kvalitativní vyhodnocení a rozhodnutí o změnách ranking logic následuje v samostatném evaluation souboru.", "");
 await writeFile(outputPath, lines.join("\n"));
-console.log(JSON.stringify({ outputPath, topics: topics.length, successful: successful.length, supportingCount, diversityCount, noEvidenceCount, withSupporting, identicalPrimary, avgLatency }));
+console.log(JSON.stringify({ outputPath, offset, topics: topics.length, successful: successful.length, supportingCount, diversityCount, noEvidenceCount, withSupporting, identicalPrimary, avgLatency }));

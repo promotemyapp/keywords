@@ -4,11 +4,16 @@ import { fetchTrendSignals } from "./trends.js";
 const GOOGLE_SUGGEST_URL = "https://suggestqueries.google.com/complete/search";
 const SEARCH_INTENTS = new Set(["informational", "commercial", "transactional", "navigational"]);
 const INTENT_TERMS = {
-  informational: ["how", "what", "why", "guide", "tips", "ideas", "checklist", "steps", "examples", "benefits"],
-  commercial: ["best", "top", "review", "comparison", "vs", "versus", "alternative", "software"],
-  transactional: ["buy", "price", "cost", "quote", "near me", "service", "builder", "company"],
-  navigational: ["login", "support", "contact", "website", "official"]
+  informational: ["how", "what", "why", "guide", "tips", "ideas", "checklist", "steps", "examples", "benefits", "jak", "co", "proc", "navod", "tipy", "postup", "kdy", "kde", "vyhody", "nevyhody", "podminky", "funguje", "vyber"],
+  commercial: ["best", "top", "review", "comparison", "vs", "versus", "alternative", "software", "nejlepsi", "recenze", "srovnani", "porovnani", "alternativa"],
+  transactional: ["buy", "price", "cost", "quote", "near me", "service", "builder", "company", "koupit", "cena", "naklady", "cenik", "sleva", "dotace", "sluzba", "poptavka", "prodej", "pujcovna", "kurz"],
+  navigational: ["login", "support", "contact", "website", "official", "prihlaseni", "podpora", "kontakt", "oficialni", "web"]
 };
+const PRIMARY_FORMAT_TERMS = {
+  czech: ["pracovni list", "prezentace", "referat", "test", "pdf"],
+  english: ["worksheet", "presentation", "essay", "test", "pdf"]
+};
+const CZECH_LOCALITY_TERMS = ["praha", "brno", "ostrava", "plzen", "liberec", "olomouc", "ceske budejovice", "hradec kralove", "pardubice", "zlin", "jihlava", "kladno", "opava", "frydek mistek"];
 const LANGUAGE_CODES = { czech: "cs", english: "en", german: "de", french: "fr", spanish: "es", italian: "it", polish: "pl", slovak: "sk", dutch: "nl", portuguese: "pt", russian: "ru", ukrainian: "uk" };
 const ANGLE_BONUSES = { costs: 4, process: 3, permits: 4, plans: 3, materials: 2, financing: 4, mistakes: 3, energy: 3, maintenance: 2 };
 const CONTENT_ANGLE_SEEDS = {
@@ -74,7 +79,7 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     ? await fetchTrendSignals(ranked.slice(0, configuration.trends_keyword_limit).map(({ keyword }) => keyword), { ...configuration, fetchImpl })
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
-  const primary = ranked[0] ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
+  const primary = selectPrimaryKeyword(ranked, topic, configuration) ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
   // Reserve the small diversity set first. Otherwise the supporting-keyword quota
   // can consume every viable candidate and make diversity_keywords empty by design.
   const diversity = selectDiversityKeywords(ranked, configuration.diversity_query_limit, primary).map((item) => ({ ...item, role: "diversity" }));
@@ -140,21 +145,23 @@ async function fetchSuggestions(seed, configuration, fetchImpl) {
 }
 
 function rankSuggestions(suggestions, topic, audience, configuration) {
-  const topicWords = meaningfulWords(topic);
-  const audienceWords = meaningfulWords(audience);
+  const normalizedTopic = normalizeForComparison(topic);
+  const topicWords = comparisonWords(topic);
+  const audienceWords = comparisonWords(audience);
   const byKeyword = new Map();
   for (const { keyword, seed, cluster, content_role } of suggestions) {
-    const key = keyword.toLowerCase();
+    const key = normalizeForComparison(keyword);
     const existing = byKeyword.get(key) ?? { keyword, seeds: new Set(), clusters: new Map() };
+    if (key === normalizedTopic) existing.keyword = topic.trim();
     existing.seeds.add(seed);
     if (cluster !== undefined) existing.clusters.set(cluster, content_role);
     byKeyword.set(key, existing);
   }
   return [...byKeyword.values()].map((item) => {
-    const normalized = item.keyword.toLowerCase();
+    const normalized = normalizeForComparison(item.keyword);
     const topicMatches = topicWords.filter((word) => normalized.includes(word)).length;
     const audienceMatches = audienceWords.filter((word) => normalized.includes(word)).length;
-    const keywordWords = meaningfulWords(item.keyword);
+    const keywordWords = comparisonWords(item.keyword);
     const intent = classifyIntent(item.keyword, configuration.search_intent);
     const specificityBonus = Math.min(3, Math.max(0, keywordWords.length - topicWords.length));
     const clusters = [...item.clusters.keys()];
@@ -182,10 +189,31 @@ function selectSupportingKeywords(ranked, limit, primary, excluded = new Set()) 
   return selected;
 }
 
+function selectPrimaryKeyword(ranked, topic, configuration) {
+  return ranked.reduce((winner, candidate) => {
+    if (!winner) return candidate;
+    const candidateScore = candidate.score - primaryFormatPenalty(candidate.keyword, configuration.language) - primaryLocalityPenalty(candidate.keyword, topic, configuration.language);
+    const winnerScore = winner.score - primaryFormatPenalty(winner.keyword, configuration.language) - primaryLocalityPenalty(winner.keyword, topic, configuration.language);
+    return candidateScore > winnerScore ? candidate : winner;
+  }, null);
+}
+
+function primaryFormatPenalty(keyword, language) {
+  const terms = PRIMARY_FORMAT_TERMS[languageName(language)] ?? [];
+  return terms.some((term) => normalizeForComparison(keyword).includes(term)) ? 4 : 0;
+}
+
+function primaryLocalityPenalty(keyword, topic, language) {
+  if (languageName(language) !== "czech") return 0;
+  const normalizedKeyword = normalizeForComparison(keyword);
+  const normalizedTopic = normalizeForComparison(topic);
+  return CZECH_LOCALITY_TERMS.some((place) => normalizedKeyword.includes(place) && !normalizedTopic.includes(place)) ? 3 : 0;
+}
+
 function selectDiversityKeywords(ranked, limit, primary, excluded = new Set()) {
-  const topicWords = meaningfulWords(primary.keyword);
+  const topicWords = comparisonWords(primary.keyword);
   const selected = [];
-  const candidates = ranked.filter((item) => item !== primary && item.cluster !== "core" && !excluded.has(item.keyword) && topicWords.some((word) => item.keyword.toLowerCase().includes(word)));
+  const candidates = ranked.filter((item) => item !== primary && item.cluster !== "core" && !excluded.has(item.keyword) && topicWords.some((word) => normalizeForComparison(item.keyword).includes(word)));
   while (selected.length < limit && candidates.length) {
     const diverseCandidates = candidates.filter((candidate) => {
       const references = [primary, ...selected, ...ranked.filter((item) => excluded.has(item.keyword))];
@@ -207,8 +235,8 @@ function selectDiversityKeywords(ranked, limit, primary, excluded = new Set()) {
 
 function tokenSimilarity(left, right, ignoredWords = []) {
   const ignored = new Set(ignoredWords);
-  const a = new Set(meaningfulWords(left).filter((word) => !ignored.has(word)));
-  const b = new Set(meaningfulWords(right).filter((word) => !ignored.has(word)));
+  const a = new Set(comparisonWords(left).filter((word) => !ignored.has(word)));
+  const b = new Set(comparisonWords(right).filter((word) => !ignored.has(word)));
   if (!a.size && !b.size) return 1;
   const overlap = [...a].filter((word) => b.has(word)).length;
   return overlap / Math.max(1, new Set([...a, ...b]).size);
@@ -224,7 +252,7 @@ function applyTrendSignals(ranked, signals) {
 }
 
 function classifyIntent(keyword, preferred) {
-  const lower = keyword.toLowerCase();
+  const lower = normalizeForComparison(keyword);
   const matches = Object.entries(INTENT_TERMS).map(([intent, terms]) => ({ intent, count: terms.filter((term) => lower.includes(term)).length }));
   const best = matches.sort((a, b) => b.count - a.count)[0];
   return best.count > 0 ? best.intent : preferred;
@@ -233,6 +261,8 @@ function classifyIntent(keyword, preferred) {
 function rationaleFor(keyword, intent, sourceCount, clusters) { const clusterText = clusters.size ? `; mapped to ${[...clusters.keys()].join(", ")} content angle${clusters.size === 1 ? "" : "s"}` : ""; return `${intent[0].toUpperCase()} query found in ${sourceCount} research seed${sourceCount === 1 ? "" : "s"}${clusterText}; assess it as a distinct blog section or article angle.`; }
 function normalizeKeyword(value) { return value.replace(/\s+/g, " ").trim().replace(/[.。]+$/, ""); }
 function meaningfulWords(value) { return value.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 2 && !["the", "and", "for", "with"].includes(word)); }
+function normalizeForComparison(value) { return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase(); }
+function comparisonWords(value) { return meaningfulWords(normalizeForComparison(value)); }
 function languageName(value) { return value.toLowerCase().split(/[-_\s]/)[0] || "english"; }
 function czechTopicForms(topic) {
   if (topic === "rodinné domy") return { genitive: "rodinného domu", singular: "rodinný dům" };

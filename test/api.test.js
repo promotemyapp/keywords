@@ -94,10 +94,27 @@ test("primary keyword can be replaced by a stronger validated candidate", async 
     },
     async text() { return ""; }
   }) });
-  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "Rodinné domy", configuration: { language: "Czech", country: "Czech Republic", search_intent: "transactional", trends_enabled: false } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
   assert.equal(result.primary_keyword.keyword, "rodinné domy cena");
+});
+
+test("Czech intent terms steer primary keyword ranking", async () => {
+  const topic = "Rodinné domy";
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const query = new URL(url).searchParams.get("q");
+      return [query, query === topic ? [topic.toLowerCase(), "rodinné domy cena"] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const informational = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", search_intent: "informational", trends_enabled: false } }) }));
+  const transactional = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", search_intent: "transactional", trends_enabled: false } }) }));
+  assert.equal((await informational.json()).primary_keyword.keyword, topic);
+  assert.equal((await transactional.json()).primary_keyword.keyword, "rodinné domy cena");
 });
 
 test("dashboard view keeps internal scores separate from the agent response", async () => {
@@ -170,6 +187,59 @@ test("autocomplete requests UTF-8 and preserves Czech characters", async () => {
   assert.equal(result.primary_keyword.keyword, "rodinné domy na prodej");
   assert.match(result.primary_keyword.keyword, /é/);
   assert.ok(requestedUrls.filter((url) => url.hostname === "suggestqueries.google.com").every((url) => url.searchParams.get("oe") === "utf-8"));
+});
+
+test("accentless autocomplete variants preserve the supplied Czech spelling", async () => {
+  const topic = "Výlet vlakem po Česku";
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const seed = new URL(url).searchParams.get("q");
+      return [seed, seed === topic ? ["vylet vlakem po cesku"] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.primary_keyword.keyword, topic);
+});
+
+test("document-format autocomplete variants do not displace a broader primary keyword", async () => {
+  const topic = "péče o pokojové rostliny";
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const seed = new URL(url).searchParams.get("q");
+      return [seed, seed === topic ? [`${topic} pracovní list`, topic] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.primary_keyword.keyword, topic);
+  assert.ok(result.supporting_keywords.some(({ keyword }) => keyword.includes("pracovní list")));
+});
+
+test("unrequested Czech city variants do not displace a nationwide primary keyword", async () => {
+  const topic = "péče o seniory doma";
+  const handler = createApiHandler({ fetchImpl: async (url) => ({
+    ok: true,
+    status: 200,
+    async json() {
+      const seed = new URL(url).searchParams.get("q");
+      return [seed, seed === topic ? [`${topic} brno`, topic] : []];
+    },
+    async text() { return ""; }
+  }) });
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic, configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
+  const result = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(result.primary_keyword.keyword, topic);
+  assert.ok(result.supporting_keywords.some(({ keyword }) => keyword.endsWith("brno")));
 });
 
 test("specific mode validates and applies overrides", async () => {
