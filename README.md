@@ -2,6 +2,31 @@
 
 This service researches keywords for marketing blog posts. An AI agent or another client sends a topic and optional language/country configuration. The API discovers related search language, adds free Google Trends signals internally, ranks the candidates, and returns a compact list of keyword recommendations.
 
+## Quick start
+
+Send a topic to the recommended-keywords endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
+  -H 'Content-Type: application/json' \
+  -d '{"topic":"Rodinné domy","configuration":{"language":"Czech","country":"Czech Republic"}}'
+```
+
+The response contains a primary keyword plus supporting and diversity recommendations:
+
+```json
+{
+  "topic": "Rodinné domy",
+  "primary_keyword": { "keyword": "rodinné domy", "score": "good" },
+  "supporting_keywords": [
+    { "keyword": "rodinné domy na prodej", "score": "okay" }
+  ],
+  "diversity_keywords": [
+    { "keyword": "stavební povolení", "score": "good" }
+  ]
+}
+```
+
 Blog-post templates, authors, personas, portraits, post profiles, and publishing workflows belong to the separate reference project and are intentionally out of scope here.
 
 ## Keyword research workflow
