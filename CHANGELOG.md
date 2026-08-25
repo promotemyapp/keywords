@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Guaranteed at least three supporting keywords and one diversity keyword for successful research responses, using weakly scored heuristic fallbacks when localized providers return too few candidates.
+- Added Czech-aware diacritic normalization and intent classification, plus primary-ranking safeguards for document-format and unrequested locality variants.
+- Added live benchmark reports and regression coverage for sparse provider results.
+
 ## 0.1.0
 
 - Re-scoped the copied marketing project to keyword research.

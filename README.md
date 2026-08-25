@@ -21,7 +21,7 @@ Blog-post templates, authors, personas, portraits, post profiles, and publishing
 4. Groups candidates into content-angle clusters such as costs, process, permits, plans, materials, financing, mistakes, energy, and maintenance.
 5. Ranks validated candidates for topic relevance, audience relevance, seed coverage, and intent match, then selects supporting keywords from different clusters to avoid repetitive variants.
 6. Adds Google Trends relative-interest and direction signals when available.
-7. Returns only a primary keyword and diverse supporting keyword recommendations to the calling agent.
+7. Returns a primary keyword plus supporting and diversity recommendations; successful research responses guarantee at least three supporting keywords and one diversity keyword, using clearly marked heuristic fallbacks when providers are sparse.
 
 The pipeline is free and unauthenticated. It does not use Google Ads, paid keyword tools, or Search Console. Google Autocomplete and Google Trends provide useful directional signals, but they do not provide exact monthly search volume, CPC, paid competition, organic difficulty, or guaranteed ranking potential.
 
@@ -34,7 +34,7 @@ Each candidate receives a heuristic relevance score for prioritizing blog conten
 The score is a combination of signals, with Google Autocomplete as the candidate source:
 
 1. Google Autocomplete supplies related keyword candidates from several topic- and intent-oriented seeds. Autocomplete does not provide a popularity score; it supplies the phrases that can be evaluated.
-2. The API calculates a relevance score from topic matches, audience matches, search intent, seed coverage, exact topic matching, keyword specificity, and question phrasing.
+2. The API calculates a relevance score from normalized topic-word matches, audience matches, search intent, seed coverage, keyword specificity, content-angle usefulness, and question phrasing. Czech diacritics are ignored for comparison but preserved in returned text.
 3. Google Trends adds a secondary signal for the top candidates when available. It contributes normalized relative interest and a small rising-interest bonus.
 
 Google Ads search volume, CPC, paid competition, Search Console data, and organic ranking difficulty are not included.
@@ -47,7 +47,7 @@ As a practical interpretation:
 
 | Score | Meaning |
 |---:|---|
-| `0` | No supporting research evidence; the API used the supplied topic as a fallback. |
+| `0` | No provider evidence; the API used the supplied topic as the primary fallback. |
 | `1–10` | Really weak keyword; limited relevance or evidence. |
 | `11–20` | Okay-ish/relevant keyword with a reasonable content opportunity. |
 | `21–30` | Good keyword that closely matches the topic and intent. |
@@ -74,9 +74,9 @@ base score =
 
 When Google Trends returns a signal, its additional trend score is added to the base score. The trend score is based on normalized relative interest over the configured timeframe, with a small bonus when interest is rising. This makes the score useful for comparing the returned candidates within one research request, but it should not be compared across unrelated topics, languages, countries, or time periods.
 
-The primary keyword is the highest-ranked validated provider candidate, so a better researched phrase can replace the supplied topic. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`. Exploratory seeds and provider evidence remain internal and are not returned to the calling agent.
+When validated provider candidates exist, the primary keyword is selected from their ranked results, with primary-only safeguards that prevent document-format queries and unrequested Czech city variants from displacing a broader target. A better researched phrase can still replace the supplied topic. Supporting keywords can score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no validated candidate is available, the API keeps the supplied topic as primary with score `0`.
 
-When localized providers return too few candidates, the API adds a minimum set of clearly marked internal heuristic fallback angles so the compact response still contains at least three supporting keywords and one diversity keyword. These fallback phrases have a weak qualitative score because they do not have Autocomplete evidence; the supplied topic remains the primary keyword with `no evidence` when no validated provider candidate exists. A warning is included in the internal dashboard research view.
+When localized providers return too few candidates, the API adds a minimum set of clearly marked internal heuristic fallback angles so the compact response still contains at least three supporting keywords and one diversity keyword. These fallback phrases have a `weak` qualitative score because they do not have Autocomplete evidence; they should be validated before publication. A warning and the internal `candidate_source: "heuristic-fallback"` marker are available in the dashboard research view.
 
 The compact response uses this shape:
 
@@ -93,7 +93,7 @@ The compact response uses this shape:
 }
 ```
 
-The numeric score is used internally to rank the supporting and diversity keywords and is converted to a qualitative `score` in the agent-facing response. Supporting keywords are returned from strongest to weakest recommendation. Diversity keywords are a smaller set of up to three more distinct queries selected for broader topical coverage. The browser dashboard uses a separate internal view so it can still display the numeric score and progress bar for human inspection.
+The numeric score is used internally to rank the supporting and diversity keywords and is converted to a qualitative `score` in the agent-facing response. Supporting keywords are returned from strongest to weakest recommendation. Diversity keywords are a smaller set of up to three more distinct queries selected for broader topical coverage; when the candidate pool is small, the selector reserves at least one diversity slot without consuming the three supporting slots. The browser dashboard uses a separate internal view so it can still display the numeric score and progress bar for human inspection.
 
 Score labels use these ranges: `no evidence` = 0, `weak` = 1–10, `okay` = 11–20, `good` = 21–30, and `strong` = 31 or higher.
 

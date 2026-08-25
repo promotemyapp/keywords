@@ -33,13 +33,13 @@ curl -X POST http://127.0.0.1:3000/v1/keywords/recommended \
   -d '{"topic":"Rodinné domy","configuration":{"country":"Czech Republic","language":"Czech"}}'
 ```
 
-`topic` is required. The response contains only `topic`, one `primary_keyword` object, an ordered `supporting_keywords` object array, and up to three `diversity_keywords`. Each object contains `keyword` and a qualitative `score`; the numeric score stays internal. Supporting keywords are sorted from strongest to weakest using that internal score. Diversity keywords are selected for lower repetition and broader topical coverage. Provider details, exploratory seeds, trends signals, methodology, and other internal research data are not returned.
+`topic` is required. The response contains only `topic`, one `primary_keyword` object, an ordered `supporting_keywords` object array, and up to three `diversity_keywords`. Each object contains `keyword` and a qualitative `score`; the numeric score stays internal. Successful responses guarantee at least three supporting keywords and one diversity keyword. Supporting keywords are sorted from strongest to weakest using the internal score. Diversity keywords are selected for lower repetition and broader topical coverage. Provider details, exploratory seeds, trends signals, methodology, fallback provenance, and other internal research data are not returned.
 
 The free providers are Google Autocomplete and Google Trends. Their signals are used internally to rank recommendations; they are not exposed in the compact response. The API does not claim CPC, difficulty, or ranking position.
 
-The primary keyword is the highest-ranked validated candidate. The supplied topic is used as the fallback only when no provider candidate is available.
+When validated provider candidates exist, the primary keyword is selected from their ranked results with primary-quality safeguards for document-format and unrequested Czech locality variants. The supplied topic is used as the primary fallback when no provider candidate is available.
 
-If providers return fewer than the minimum recommendation set, the service generates labeled heuristic fallback angles to keep the response useful: at least three supporting keywords and one diversity keyword are returned. These fallback candidates are marked internally as having no provider evidence and receive a weak qualitative score; they should be validated before publication.
+If providers return fewer than the minimum recommendation set, the service generates labeled heuristic fallback angles to keep the response useful: at least three supporting keywords and one diversity keyword are returned. These fallback candidates are marked internally with `candidate_source: "heuristic-fallback"` and receive a `weak` qualitative score because they have no provider evidence; they should be validated before publication. The internal dashboard view also includes a warning.
 
 The browser dashboard may request an internal dashboard view to visualize scores, but those internal fields are not part of the normal agent-facing response.
 
