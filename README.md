@@ -76,6 +76,8 @@ When Google Trends returns a signal, its additional trend score is added to the 
 
 The primary keyword is the highest-ranked validated provider candidate, so a better researched phrase can replace the supplied topic. Supporting keywords can still score highly when they are strongly related, appear across multiple research seeds, match the selected intent, or add useful specificity. If no direct candidate is available at all, the API falls back to the supplied topic with score `0`. Exploratory seeds and provider evidence remain internal and are not returned to the calling agent.
 
+When localized providers return too few candidates, the API adds a minimum set of clearly marked internal heuristic fallback angles so the compact response still contains at least three supporting keywords and one diversity keyword. These fallback phrases have a weak qualitative score because they do not have Autocomplete evidence; the supplied topic remains the primary keyword with `no evidence` when no validated provider candidate exists. A warning is included in the internal dashboard research view.
+
 The compact response uses this shape:
 
 ```json

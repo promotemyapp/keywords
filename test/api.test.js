@@ -129,7 +129,7 @@ test("dashboard view keeps internal scores separate from the agent response", as
   assert.ok(result.diversity_keywords.every(({ keyword, score }) => typeof keyword === "string" && typeof score === "string"));
 });
 
-test("diversity keywords exclude near-duplicate autocomplete variants", async () => {
+test("sparse autocomplete results are completed with minimum recommendations", async () => {
   const handler = createApiHandler({ fetchImpl: async (url) => ({
     ok: true,
     status: 200,
@@ -144,7 +144,9 @@ test("diversity keywords exclude near-duplicate autocomplete variants", async ()
   const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "bivak na ryby", configuration: { language: "Czech", country: "Czech Republic", trends_enabled: false } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.ok(result.diversity_keywords.length < 3);
+  assert.ok(result.supporting_keywords.length >= 3);
+  assert.ok(result.diversity_keywords.length >= 1);
+  assert.ok(result.diversity_keywords.length <= 3);
 });
 
 test("diversity keywords are reserved before the supporting quota", async () => {
@@ -171,10 +173,11 @@ test("diversity keywords are reserved before the supporting quota", async () => 
 
 test("empty provider results are reported as a warning", async () => {
   const handler = createApiHandler({ fetchImpl: async (url) => ({ ok: true, status: 200, async json() { return [new URL(url).searchParams.get("q"), []]; }, async text() { return ""; } }) });
-  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses" }) }));
+  const response = await handler(new Request("https://example.vercel.app/v1/keywords/recommended", { method: "POST", body: JSON.stringify({ topic: "building family houses", configuration: { language: "English", country: "United States", trends_enabled: false } }) }));
   const result = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(result.supporting_keywords.length, 0);
+  assert.ok(result.supporting_keywords.length >= 3);
+  assert.ok(result.diversity_keywords.length >= 1);
   assert.equal(result.primary_keyword.keyword, "building family houses");
 });
 

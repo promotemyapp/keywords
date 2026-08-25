@@ -39,6 +39,8 @@ The free providers are Google Autocomplete and Google Trends. Their signals are 
 
 The primary keyword is the highest-ranked validated candidate. The supplied topic is used as the fallback only when no provider candidate is available.
 
+If providers return fewer than the minimum recommendation set, the service generates labeled heuristic fallback angles to keep the response useful: at least three supporting keywords and one diversity keyword are returned. These fallback candidates are marked internally as having no provider evidence and receive a weak qualitative score; they should be validated before publication.
+
 The browser dashboard may request an internal dashboard view to visualize scores, but those internal fields are not part of the normal agent-facing response.
 
 ## Specific request

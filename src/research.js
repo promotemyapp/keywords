@@ -14,6 +14,8 @@ const PRIMARY_FORMAT_TERMS = {
   english: ["worksheet", "presentation", "essay", "test", "pdf"]
 };
 const CZECH_LOCALITY_TERMS = ["praha", "brno", "ostrava", "plzen", "liberec", "olomouc", "ceske budejovice", "hradec kralove", "pardubice", "zlin", "jihlava", "kladno", "opava", "frydek mistek"];
+const MIN_SUPPORTING_KEYWORDS = 3;
+const MIN_DIVERSITY_KEYWORDS = 1;
 const LANGUAGE_CODES = { czech: "cs", english: "en", german: "de", french: "fr", spanish: "es", italian: "it", polish: "pl", slovak: "sk", dutch: "nl", portuguese: "pt", russian: "ru", ukrainian: "uk" };
 const ANGLE_BONUSES = { costs: 4, process: 3, permits: 4, plans: 3, materials: 2, financing: 4, mistakes: 3, energy: 3, maintenance: 2 };
 const CONTENT_ANGLE_SEEDS = {
@@ -79,16 +81,27 @@ export async function researchKeywords({ topic, audience = "", configuration, fe
     ? await fetchTrendSignals(ranked.slice(0, configuration.trends_keyword_limit).map(({ keyword }) => keyword), { ...configuration, fetchImpl })
     : { provider: "google-trends", status: "disabled", signals: [], sources: [] };
   ranked = applyTrendSignals(ranked, trends.signals);
-  const primary = selectPrimaryKeyword(ranked, topic, configuration) ?? { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
+  const validatedCandidates = ranked;
+  const fallbackKeywords = buildFallbackKeywords(topic, configuration, ranked);
+  ranked = [...ranked, ...fallbackKeywords];
+  const fallbackUsed = fallbackKeywords.length > 0;
+  const primary = validatedCandidates.length
+    ? selectPrimaryKeyword(ranked, topic, configuration)
+    : { keyword: topic.trim(), intent: classifyIntent(topic, configuration.search_intent), score: 0, sources: [], rationale: "Used the supplied topic because no direct suggestions were returned." };
   // Reserve the small diversity set first. Otherwise the supporting-keyword quota
   // can consume every viable candidate and make diversity_keywords empty by design.
-  const diversity = selectDiversityKeywords(ranked, configuration.diversity_query_limit, primary).map((item) => ({ ...item, role: "diversity" }));
-  const supporting = selectSupportingKeywords(ranked, configuration.supporting_query_limit, primary, new Set(diversity.map(({ keyword }) => keyword))).map((item) => ({ ...item, role: "supporting" }));
+  const maximumDiversityWithoutCrowdingSupport = Math.max(MIN_DIVERSITY_KEYWORDS, ranked.length - 1 - MIN_SUPPORTING_KEYWORDS);
+  const diversityLimit = fallbackUsed
+    ? MIN_DIVERSITY_KEYWORDS
+    : Math.min(configuration.diversity_query_limit, maximumDiversityWithoutCrowdingSupport);
+  const diversity = selectDiversityKeywords(ranked, diversityLimit, primary).map((item) => ({ ...item, role: "diversity" }));
+  const supporting = selectSupportingKeywords(ranked, Math.max(MIN_SUPPORTING_KEYWORDS, configuration.supporting_query_limit), primary, new Set(diversity.map(({ keyword }) => keyword))).map((item) => ({ ...item, role: "supporting" }));
   const missingAngles = responses.filter(({ cluster, keywords }) => cluster !== "core" && !keywords.length);
   const contentAngles = seeds.filter(({ cluster }) => cluster !== "core").map(({ query, cluster, role }) => ({ query, cluster, content_role: role, validated: !missingAngles.some((angle) => angle.cluster === cluster) }));
   const warnings = [];
   if (!ranked.length) warnings.push("No keyword suggestions were returned by Google Autocomplete for this topic and market. The primary keyword is the supplied topic and has no research score.");
   if (missingAngles.length) warnings.push(`${missingAngles.length} exploratory content angle${missingAngles.length === 1 ? "" : "s"} returned no validated Google Autocomplete keyword. These angles are provided separately and are not counted as keywords.`);
+  if (fallbackUsed) warnings.push(`Google Autocomplete returned fewer than the minimum recommendation set. ${fallbackKeywords.length} heuristic fallback keyword${fallbackKeywords.length === 1 ? " was" : "s were"} added without provider evidence.`);
 
   return {
     providers: ["google-autocomplete", "google-trends"],
@@ -187,6 +200,46 @@ function selectSupportingKeywords(ranked, limit, primary, excluded = new Set()) 
     if (selected.length === limit) break;
   }
   return selected;
+}
+
+function buildFallbackKeywords(topic, configuration, ranked) {
+  const minimumNeeded = MIN_SUPPORTING_KEYWORDS + MIN_DIVERSITY_KEYWORDS;
+  if (ranked.length >= minimumNeeded + 1 && ranked.some(({ cluster }) => cluster !== "core")) return [];
+  const existing = new Set(ranked.map(({ keyword }) => normalizeForComparison(keyword)));
+  const language = languageName(configuration.language);
+  const templates = language === "czech"
+    ? [
+      { suffix: "pro začátečníky", cluster: "process", role: "beginner guide" },
+      { suffix: "cena", cluster: "costs", role: "costs and value" },
+      { suffix: "vybavení", cluster: "materials", role: "types and options" },
+      { suffix: "tipy", cluster: "mistakes", role: "tips and practice" },
+      { suffix: "pravidla", cluster: "permits", role: "rules and requirements" },
+      { suffix: "zkušenosti", cluster: "process", role: "practical experience" }
+    ]
+    : [
+      { suffix: "for beginners", cluster: "process", role: "beginner guide" },
+      { suffix: "cost", cluster: "costs", role: "costs and value" },
+      { suffix: "equipment", cluster: "materials", role: "types and options" },
+      { suffix: "tips", cluster: "mistakes", role: "tips and practice" },
+      { suffix: "rules", cluster: "permits", role: "rules and requirements" },
+      { suffix: "experiences", cluster: "process", role: "practical experience" }
+    ];
+  return templates.map(({ suffix, cluster, role }) => ({
+    keyword: `${topic.trim()} ${suffix}`,
+    intent: configuration.search_intent,
+    score: 5,
+    sources: [],
+    cluster,
+    clusters: [cluster],
+    content_role: role,
+    candidate_source: "heuristic-fallback",
+    rationale: "Generated as a clearly labeled fallback angle because localized provider suggestions were insufficient."
+  })).filter((item) => {
+    const key = normalizeForComparison(item.keyword);
+    if (existing.has(key)) return false;
+    existing.add(key);
+    return true;
+  }).slice(0, minimumNeeded);
 }
 
 function selectPrimaryKeyword(ranked, topic, configuration) {
